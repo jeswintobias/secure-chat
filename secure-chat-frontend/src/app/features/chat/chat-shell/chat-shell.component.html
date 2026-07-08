@@ -1,0 +1,46 @@
+<div class="chat-layout">
+  <!-- Sidebar Panel -->
+  <app-chat-sidebar
+    [conversations]="groups"
+    [activeConversationId]="activeConversation?.id ?? ''"
+    [currentUsername]="currentUsername"
+    (conversationSelected)="onConversationSelected($event)"
+    (groupCreated)="onGroupCreated($event)"
+    (groupJoined)="onGroupJoined($event)"
+    (connectionAccepted)="onConnectionAccepted($event)"
+  ></app-chat-sidebar>
+
+  <!-- Main Chat Panel -->
+  <main class="chat-main">
+    @if (activeConversation) {
+      <app-chat-header
+        [conversation]="activeConversation"
+        [typingUsers]="typingUsers"
+        [pinnedMessages]="pinnedMessages"
+      ></app-chat-header>
+
+      <app-message-window
+        [messages]="messages"
+        [currentUsername]="currentUsername"
+        [isAdmin]="isAdmin"
+        (pinMessage)="onPinMessage($event)"
+        (unpinMessage)="onUnpinMessage($event)"
+      ></app-message-window>
+
+      <!-- WebSocket Error Toast (URL security blocks, etc.) -->
+      @if (wsError) {
+        <div class="ws-error-toast">
+          <span class="ws-error-message">{{ wsError }}</span>
+          <button class="ws-error-dismiss" (click)="dismissWsError()" title="Dismiss">&times;</button>
+        </div>
+      }
+
+      <app-message-input
+        (messageSent)="onMessageSent($event)"
+        (typingChanged)="onTypingChanged($event)"
+      ></app-message-input>
+    } @else {
+      <app-empty-state></app-empty-state>
+    }
+  </main>
+</div>

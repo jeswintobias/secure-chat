@@ -1,0 +1,121 @@
+<!-- File Size Error Toast -->
+@if (fileSizeError) {
+  <div class="file-error-toast">{{ fileSizeError }}</div>
+}
+
+<!-- Attachment Preview Strip -->
+@if (selectedFile) {
+  <div class="attachment-preview">
+    @if (isFileImage && filePreviewUrl) {
+      <img [src]="filePreviewUrl" alt="Preview" class="preview-image" />
+    } @else {
+      <div class="preview-file">
+        <span class="preview-file-icon">📄</span>
+        <span class="preview-file-name">{{ selectedFile.name }}</span>
+      </div>
+    }
+    <button class="preview-remove" (click)="removeFile()" title="Remove attachment">&times;</button>
+  </div>
+}
+
+<!-- Expiry Active Indicator -->
+@if (selectedExpiry) {
+  <div class="expiry-active-bar">
+    <span class="expiry-active-icon">⏳</span>
+    <span>Disappearing: {{ expiryLabel }}</span>
+    <button class="expiry-clear-btn" (click)="clearExpiry()" title="Turn off disappearing">&times;</button>
+  </div>
+}
+
+<footer class="message-input-bar">
+  <div class="input-container">
+    <!-- Hidden file input -->
+    <input
+      #fileInput
+      type="file"
+      class="hidden-file-input"
+      (change)="onFileSelected($event)"
+    />
+
+    <!-- Attach button -->
+    <button
+      id="attach-button"
+      class="icon-btn attach-btn"
+      (click)="openFilePicker()"
+      title="Attach file"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+      </svg>
+    </button>
+
+    <!-- Message textarea -->
+    <textarea
+      id="message-input"
+      class="message-textarea"
+      [(ngModel)]="messageText"
+      (input)="onInput()"
+      (keydown)="onKeyDown($event)"
+      placeholder="Type a message"
+      rows="1"
+    ></textarea>
+
+    <!-- Expiry button -->
+    <div class="expiry-wrapper">
+      <button
+        id="expiry-button"
+        class="icon-btn expiry-btn"
+        [class.active]="selectedExpiry"
+        (click)="toggleExpiryMenu()"
+        title="Disappearing messages"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        </svg>
+      </button>
+
+      <!-- Expiry dropdown menu -->
+      @if (showExpiryMenu) {
+        <div class="expiry-menu">
+          <div class="expiry-menu-title">Disappear after</div>
+          @for (option of expiryOptions; track option.value) {
+            <button
+              class="expiry-option"
+              [class.selected]="selectedExpiry === option.value"
+              (click)="selectExpiry(option)"
+            >
+              {{ option.label }}
+            </button>
+          }
+          @if (showCustomInput) {
+            <div class="expiry-custom">
+              <input
+                type="number"
+                class="expiry-custom-input"
+                [(ngModel)]="customExpiryMinutes"
+                placeholder="Minutes"
+                min="1"
+                max="10080"
+              />
+              <button class="expiry-custom-apply" (click)="applyCustomExpiry()">Apply</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Send button -->
+    <button
+      id="send-button"
+      class="send-btn"
+      [class.active]="canSend"
+      [disabled]="!canSend"
+      (click)="send()"
+      title="Send message"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+      </svg>
+    </button>
+  </div>
+</footer>

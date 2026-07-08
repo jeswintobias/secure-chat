@@ -1,0 +1,110 @@
+.bubble-row {
+  display: flex; margin-bottom: 1px; animation: slideUp 0.2s ease;
+}
+.bubble-row.own { justify-content: flex-end; }
+.bubble-row.other { justify-content: flex-start; }
+.bubble {
+  max-width: 65%; padding: 6px 7px 8px 9px;
+  border-radius: var(--radius-sm); position: relative;
+  word-wrap: break-word; line-height: 1.45;
+}
+.bubble-own {
+  background: var(--bg-bubble-out); color: var(--text-bubble);
+  border-top-right-radius: 0;
+}
+.bubble-other {
+  background: var(--bg-bubble-in); color: var(--text-bubble);
+  border-top-left-radius: 0;
+}
+.sender-name {
+  display: block; font-size: 12.5px; font-weight: 600;
+  color: var(--accent-hover); margin-bottom: 2px;
+}
+.bubble-content { font-size: 14.2px; white-space: pre-wrap; }
+.bubble-meta {
+  float: right; display: flex; align-items: center; gap: 4px;
+  margin-left: 12px; margin-top: 4px; position: relative; bottom: -3px;
+}
+.bubble-time { font-size: 11px; color: rgba(255,255,255,0.55); }
+.ephemeral-icon { font-size: 11px; opacity: 0.7; }
+
+/* ── Pinned Message Indicator ── */
+.bubble-pinned {
+  border-left: 3px solid var(--accent-primary);
+}
+.pin-badge {
+  font-size: 11px; position: absolute; top: 4px; right: 6px;
+  opacity: 0.8;
+}
+
+/* ── Read Receipt Ticks ── */
+.tick {
+  display: inline-flex; align-items: center; margin-left: 2px;
+}
+.tick-sent {
+  color: rgba(255, 255, 255, 0.5);
+}
+.tick-read {
+  color: #53bdeb;
+}
+
+/* ── Image Attachment ── */
+.attachment-image-link {
+  display: block; margin: 4px 0; cursor: pointer;
+}
+.attachment-image {
+  max-width: 100%; max-height: 300px;
+  border-radius: var(--radius-xs);
+  object-fit: cover;
+  transition: opacity var(--transition-fast);
+}
+.attachment-image:hover {
+  opacity: 0.9;
+}
+
+/* ── File Attachment ── */
+.attachment-file {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; margin: 4px 0;
+  background: rgba(0, 0, 0, 0.15); border-radius: var(--radius-xs);
+  text-decoration: none; color: inherit;
+  transition: background var(--transition-fast);
+}
+.attachment-file:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+.file-icon { font-size: 28px; flex-shrink: 0; }
+.file-info {
+  display: flex; flex-direction: column; min-width: 0; flex: 1;
+}
+.file-name {
+  font-size: 13px; font-weight: 500; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-type {
+  font-size: 11px; color: var(--text-secondary);
+}
+.file-download-icon {
+  font-size: 16px; color: var(--accent-primary); flex-shrink: 0;
+}
+
+/* ── Admin Hover Actions ── */
+.bubble-actions {
+  position: absolute; top: -8px; right: 4px;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+.bubble:hover .bubble-actions {
+  opacity: 1; pointer-events: auto;
+}
+.action-btn {
+  padding: 3px 8px; font-size: 11px; font-weight: 500;
+  background: var(--bg-tertiary); border-radius: var(--radius-xs);
+  color: var(--text-primary); cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast);
+}
+.action-btn:hover {
+  background: var(--bg-active);
+}

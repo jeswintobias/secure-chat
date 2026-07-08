@@ -1,0 +1,74 @@
+<div class="bubble-row" [class.own]="isOwn" [class.other]="!isOwn">
+  <div class="bubble" [class.bubble-own]="isOwn" [class.bubble-other]="!isOwn" [class.bubble-pinned]="message.pinned">
+
+    <!-- Pinned indicator -->
+    @if (message.pinned) {
+      <span class="pin-badge" title="Pinned by {{ message.pinnedBy }}">📌</span>
+    }
+
+    <!-- Sender name (other users only) -->
+    @if (!isOwn) {
+      <span class="sender-name">{{ message.senderUsername }}</span>
+    }
+
+    <!-- Image attachment -->
+    @if (isImage && message.attachmentUrl) {
+      <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-image-link">
+        <img [src]="message.attachmentUrl" [alt]="'Image from ' + message.senderUsername" class="attachment-image" loading="lazy" />
+      </a>
+    }
+
+    <!-- File attachment -->
+    @if (isFile && message.attachmentUrl) {
+      <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-file">
+        <span class="file-icon">📄</span>
+        <span class="file-info">
+          <span class="file-name">{{ fileName }}</span>
+          <span class="file-type">{{ message.attachmentType }}</span>
+        </span>
+        <span class="file-download-icon">⬇</span>
+      </a>
+    }
+
+    <!-- Text content -->
+    @if (message.content) {
+      <span class="bubble-content">{{ message.content }}</span>
+    }
+
+    <!-- Meta: ephemeral icon + time + read ticks -->
+    <span class="bubble-meta">
+      @if (isEphemeral) {
+        <span class="ephemeral-icon" title="Disappearing message">⏳</span>
+      }
+      <span class="bubble-time">{{ formattedTime }}</span>
+      <!-- Read receipt ticks (own messages only) -->
+      @if (isOwn) {
+        @if (isRead) {
+          <span class="tick tick-read" title="Read">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
+              <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6 6l3.5 3.5L16 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        } @else {
+          <span class="tick tick-sent" title="Sent">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        }
+      }
+    </span>
+
+    <!-- Admin hover actions -->
+    @if (isAdmin) {
+      <div class="bubble-actions">
+        @if (message.pinned) {
+          <button class="action-btn" (click)="onUnpin()" title="Unpin message">Unpin</button>
+        } @else {
+          <button class="action-btn" (click)="onPin()" title="Pin message">📌 Pin</button>
+        }
+      </div>
+    }
+  </div>
+</div>

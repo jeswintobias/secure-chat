@@ -1,0 +1,17 @@
+# IDE and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Agent Rules
+.clinerules
+.cursorrules
+.antigravityrules
+
+# Documentation
+docs/
+
+# OS specific
+.DS_Store
+Thumbs.db

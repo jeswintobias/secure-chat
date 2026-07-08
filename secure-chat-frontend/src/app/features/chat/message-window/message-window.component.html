@@ -1,0 +1,16 @@
+<div class="message-viewport" #scrollContainer>
+  @for (message of messages; track message.id; let i = $index) {
+    @if (showDateSeparator(i)) {
+      <div class="date-separator">
+        <span class="date-label">{{ formatDateSeparator(message.createdAt) }}</span>
+      </div>
+    }
+    <app-message-bubble
+      [message]="message"
+      [isOwn]="message.senderUsername === currentUsername"
+      [isAdmin]="isAdmin"
+      (pinMessage)="pinMessage.emit($event)"
+      (unpinMessage)="unpinMessage.emit($event)"
+    ></app-message-bubble>
+  }
+</div>

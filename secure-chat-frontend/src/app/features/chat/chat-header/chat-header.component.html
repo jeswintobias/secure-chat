@@ -1,0 +1,51 @@
+<header class="chat-header">
+  <div class="header-info">
+    <div class="header-avatar">{{ getInitials(conversation.name) }}</div>
+    <div class="header-text">
+      <h2 class="header-name">{{ conversation.name }}</h2>
+      @if (typingUsers.length > 0) {
+        <span class="typing-indicator">
+          <span class="typing-dots">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </span>
+          {{ typingText }}
+        </span>
+      } @else {
+        <span class="header-subtitle">{{ conversation.memberCount }} members</span>
+      }
+    </div>
+  </div>
+
+  <!-- Pinned Messages Toggle Button -->
+  @if (pinnedMessages.length > 0) {
+    <div class="header-actions">
+      <button
+        class="pin-toggle-btn"
+        [class.active]="showPinnedBanner"
+        (click)="togglePinnedBanner()"
+        title="Pinned messages"
+      >
+        <span class="pin-toggle-icon">📌</span>
+        <span class="pin-count">{{ pinnedMessages.length }}</span>
+      </button>
+    </div>
+  }
+</header>
+
+<!-- Pinned Messages Banner -->
+@if (showPinnedBanner && pinnedMessages.length > 0) {
+  <div class="pinned-banner">
+    <div class="pinned-banner-title">
+      <span>📌 Pinned Messages</span>
+      <button class="pinned-close-btn" (click)="togglePinnedBanner()">&times;</button>
+    </div>
+    <div class="pinned-list">
+      @for (msg of pinnedMessages; track msg.id) {
+        <div class="pinned-item">
+          <span class="pinned-sender">{{ msg.senderUsername }}</span>
+          <span class="pinned-content">{{ msg.content }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}
