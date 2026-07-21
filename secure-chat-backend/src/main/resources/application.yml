@@ -44,8 +44,10 @@ app:
     expiration-ms: 86400000  # 24 hours
 
   # -------------------- WebSocket --------------------
+  # Use * in dev so any dynamically-assigned Angular port works.
+  # Override via WS_ALLOWED_ORIGINS env var in production.
   websocket:
-    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:3000,http://localhost:52267}
+    allowed-origins: ${WS_ALLOWED_ORIGINS:*}
 
   # -------------------- URL Security Pipeline --------------------
   security:
@@ -58,8 +60,10 @@ app:
     safe-browsing-api-key: ${SAFE_BROWSING_API_KEY:}
 
   # -------------------- CORS --------------------
+  # Use * in dev so any dynamically-assigned Angular port works.
+  # Override via CORS_ALLOWED_ORIGINS env var in production.
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:3000,http://localhost:52267}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
 # ============================================================
 # Logging

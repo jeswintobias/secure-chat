@@ -1,79 +1,223 @@
 <div class="auth-page">
-  <div class="auth-backdrop"></div>
-  <div class="auth-card">
-    <div class="auth-header">
-      <div class="auth-logo">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="24" fill="var(--accent-primary)" opacity="0.15"/>
-          <path d="M24 8C15.16 8 8 14.72 8 23c0 2.84.84 5.48 2.28 7.72L8 40l9.64-2.52C19.72 38.48 21.8 39 24 39c8.84 0 16-6.72 16-15S32.84 8 24 8z" fill="var(--accent-primary)"/>
-          <path d="M32 27.4c-.44-.2-2.56-1.24-2.96-1.4-.4-.12-.68-.2-.96.2-.28.4-1.08 1.4-1.32 1.68-.24.28-.48.32-.92.12-.44-.2-1.84-.68-3.52-2.16-1.3-1.16-2.18-2.6-2.44-3.04-.24-.44-.02-.68.18-.88.2-.2.44-.48.64-.72.2-.24.28-.4.4-.68.12-.28.06-.52-.02-.72-.1-.2-.96-2.32-1.32-3.16-.36-.84-.72-.72-.96-.72h-.84c-.28 0-.72.08-1.08.44-.36.36-1.4 1.36-1.4 3.32s1.44 3.86 1.64 4.12c.2.28 2.84 4.32 6.88 6.06.96.4 1.72.68 2.32.84.96.32 1.84.28 2.52.16.76-.12 2.56-1.04 2.92-2.04.36-1 .36-1.84.24-2.04-.12-.16-.4-.28-.84-.48z" fill="white"/>
+  <!-- Animated Background -->
+  <div class="auth-backdrop">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- Left Branding Panel -->
+  <div class="branding-panel">
+    <div class="branding-content">
+      <div class="brand-logo">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <defs>
+            <linearGradient id="shield-grad-r" x1="0" y1="0" x2="56" y2="56">
+              <stop offset="0%" stop-color="#00e6a7"/>
+              <stop offset="100%" stop-color="#00a884"/>
+            </linearGradient>
+          </defs>
+          <rect width="56" height="56" rx="16" fill="url(#shield-grad-r)" opacity="0.15"/>
+          <path d="M28 12L14 19v9c0 9.38 5.97 18.16 14 21 8.03-2.84 14-11.62 14-21v-9L28 12z" fill="url(#shield-grad-r)" opacity="0.3"/>
+          <path d="M28 16L18 21.5v7c0 7.03 4.48 13.62 10 15.75 5.52-2.13 10-8.72 10-15.75v-7L28 16z" fill="url(#shield-grad-r)"/>
+          <path d="M25.5 31.5l-3-3 1.41-1.41L25.5 28.67l5.09-5.09L32 25l-6.5 6.5z" fill="white"/>
         </svg>
       </div>
-      <h1 class="auth-title">Create Account</h1>
-      <p class="auth-subtitle">Join Secure Chat and start messaging</p>
-    </div>
+      <h1 class="brand-title">Join Secure Chat</h1>
+      <p class="brand-tagline">Create your account and start messaging with complete privacy and security.</p>
 
-    <form class="auth-form" (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <label for="reg-username" class="form-label">Username</label>
-        <input id="reg-username" type="text" class="form-input" [(ngModel)]="username" name="username"
-          placeholder="Choose a username" autocomplete="username" required minlength="3" maxlength="50" />
-        @if (fieldErrors['username']) {
-          <span class="field-error">{{ fieldErrors['username'] }}</span>
-        }
-      </div>
-
-      <div class="form-group">
-        <label for="reg-email" class="form-label">Email</label>
-        <input id="reg-email" type="email" class="form-input" [(ngModel)]="email" name="email"
-          placeholder="your@email.com" autocomplete="email" required />
-        @if (fieldErrors['email']) {
-          <span class="field-error">{{ fieldErrors['email'] }}</span>
-        }
-      </div>
-
-      <div class="form-group">
-        <label for="reg-password" class="form-label">Password</label>
-        <input id="reg-password" type="password" class="form-input" [(ngModel)]="password" name="password"
-          placeholder="Minimum 8 characters" autocomplete="new-password" required minlength="8" />
-        @if (fieldErrors['password']) {
-          <span class="field-error">{{ fieldErrors['password'] }}</span>
-        }
-      </div>
-
-      <div class="form-group">
-        <label for="reg-confirm" class="form-label">Confirm Password</label>
-        <input id="reg-confirm" type="password" class="form-input"
-          [class.input-error]="passwordMismatch"
-          [(ngModel)]="confirmPassword" name="confirmPassword"
-          placeholder="Re-enter your password" autocomplete="new-password" required />
-        @if (passwordMismatch) {
-          <span class="field-error">Passwords do not match</span>
-        }
-      </div>
-
-      @if (errorMessage) {
-        <div class="form-error" role="alert">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM7 4h2v5H7V4zm0 6h2v2H7v-2z"/>
-          </svg>
-          {{ errorMessage }}
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 1a4.5 4.5 0 00-4.5 4.5V8H4a2 2 0 00-2 2v7a2 2 0 002 2h12a2 2 0 002-2v-7a2 2 0 00-2-2h-1.5V5.5A4.5 4.5 0 0010 1zm-2.5 4.5a2.5 2.5 0 015 0V8h-5V5.5zM10 13a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <span class="feature-label">Zero Knowledge Architecture</span>
+            <span class="feature-desc">We never see your messages</span>
+          </div>
         </div>
-      }
+        <div class="feature-item">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.97 5.97 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.97 5.97 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <span class="feature-label">Create Groups Instantly</span>
+            <span class="feature-desc">Invite friends with a referral code</span>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <span class="feature-label">Lightning Fast Setup</span>
+            <span class="feature-desc">Start chatting in under 30 seconds</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-      <button id="register-submit" type="submit" class="btn-primary"
-        [disabled]="isLoading || passwordMismatch || !username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()">
-        @if (isLoading) {
-          <span class="spinner"></span>
-          Creating account...
-        } @else {
-          Create Account
+  <!-- Right Form Panel -->
+  <div class="form-panel">
+    <div class="auth-card">
+      <div class="auth-header">
+        <!-- Mobile-only logo -->
+        <div class="mobile-logo">
+          <svg width="40" height="40" viewBox="0 0 56 56" fill="none">
+            <defs>
+              <linearGradient id="shield-grad-rm" x1="0" y1="0" x2="56" y2="56">
+                <stop offset="0%" stop-color="#00e6a7"/>
+                <stop offset="100%" stop-color="#00a884"/>
+              </linearGradient>
+            </defs>
+            <rect width="56" height="56" rx="16" fill="url(#shield-grad-rm)" opacity="0.15"/>
+            <path d="M28 16L18 21.5v7c0 7.03 4.48 13.62 10 15.75 5.52-2.13 10-8.72 10-15.75v-7L28 16z" fill="url(#shield-grad-rm)"/>
+            <path d="M25.5 31.5l-3-3 1.41-1.41L25.5 28.67l5.09-5.09L32 25l-6.5 6.5z" fill="white"/>
+          </svg>
+        </div>
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-subtitle">Join Secure Chat and start messaging</p>
+      </div>
+
+      <form class="auth-form" (ngSubmit)="onSubmit()">
+        <!-- 1. Email (first) -->
+        <div class="form-group">
+          <label for="reg-email" class="form-label">Email</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <path d="M2.25 4.5A1.5 1.5 0 013.75 3h10.5a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9zm1.5.41v.34l5.25 3.28 5.25-3.28v-.34H3.75zm10.5 1.84l-4.72 2.95a1 1 0 01-1.06 0L3.75 6.75V13.5h10.5V6.75z"/>
+            </svg>
+            <input id="reg-email" type="email" class="form-input" [(ngModel)]="email" name="email"
+              placeholder="your&#64;email.com" autocomplete="email" required
+              (input)="onEmailInput()" />
+          </div>
+          @if (fieldErrors['email']) {
+            <span class="field-error">{{ fieldErrors['email'] }}</span>
+          }
+        </div>
+
+        <!-- 2. "Use email as username" toggle -->
+        <label class="checkbox-wrapper" for="same-as-email">
+          <input id="same-as-email" type="checkbox" class="checkbox-input"
+            [(ngModel)]="useSameAsEmail" name="useSameAsEmail"
+            (change)="onSameAsEmailToggle()" />
+          <span class="checkbox-mark">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M4.5 8.59L2.41 6.5 1.59 7.33 4.5 10.25l7-7-.83-.83L4.5 8.59z"/>
+            </svg>
+          </span>
+          <span class="checkbox-label">Use email as username</span>
+        </label>
+
+        <!-- 3. Username -->
+        <div class="form-group">
+          <label for="reg-username" class="form-label">Username</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <path d="M9 1.5a3.75 3.75 0 110 7.5 3.75 3.75 0 010-7.5zM9 10.5c-4.14 0-7.5 1.68-7.5 3.75V16h15v-1.75c0-2.07-3.36-3.75-7.5-3.75z"/>
+            </svg>
+            <input id="reg-username" type="text" class="form-input" [(ngModel)]="username" name="username"
+              [class.input-disabled]="useSameAsEmail"
+              [readonly]="useSameAsEmail"
+              placeholder="Choose a username" autocomplete="username" required minlength="3" maxlength="50" />
+          </div>
+          @if (fieldErrors['username']) {
+            <span class="field-error">{{ fieldErrors['username'] }}</span>
+          }
+        </div>
+
+        <!-- 4. Password with strength rules -->
+        <div class="form-group">
+          <label for="reg-password" class="form-label">Password</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <path d="M14.25 6.75h-.75V5.25a4.5 4.5 0 10-9 0v1.5h-.75A1.5 1.5 0 002.25 8.25v7.5a1.5 1.5 0 001.5 1.5h10.5a1.5 1.5 0 001.5-1.5v-7.5a1.5 1.5 0 00-1.5-1.5zM6 5.25a3 3 0 116 0v1.5H6V5.25zM9 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
+            </svg>
+            <input id="reg-password" type="password" class="form-input" [(ngModel)]="password" name="password"
+              placeholder="Create a strong password" autocomplete="new-password" required minlength="8" />
+          </div>
+          @if (fieldErrors['password']) {
+            <span class="field-error">{{ fieldErrors['password'] }}</span>
+          }
+
+          <!-- Password strength checklist -->
+          @if (showPasswordRules) {
+            <div class="password-rules">
+              <div class="rule" [class.rule-pass]="hasMinLength" [class.rule-fail]="!hasMinLength">
+                <span class="rule-icon">{{ hasMinLength ? '✓' : '✕' }}</span>
+                <span class="rule-text">At least 8 characters</span>
+              </div>
+              <div class="rule" [class.rule-pass]="hasUppercase" [class.rule-fail]="!hasUppercase">
+                <span class="rule-icon">{{ hasUppercase ? '✓' : '✕' }}</span>
+                <span class="rule-text">One uppercase letter (A-Z)</span>
+              </div>
+              <div class="rule" [class.rule-pass]="hasLowercase" [class.rule-fail]="!hasLowercase">
+                <span class="rule-icon">{{ hasLowercase ? '✓' : '✕' }}</span>
+                <span class="rule-text">One lowercase letter (a-z)</span>
+              </div>
+              <div class="rule" [class.rule-pass]="hasNumber" [class.rule-fail]="!hasNumber">
+                <span class="rule-icon">{{ hasNumber ? '✓' : '✕' }}</span>
+                <span class="rule-text">One number (0-9)</span>
+              </div>
+              <div class="rule" [class.rule-pass]="hasSpecial" [class.rule-fail]="!hasSpecial">
+                <span class="rule-icon">{{ hasSpecial ? '✓' : '✕' }}</span>
+                <span class="rule-text">One special character (!&#64;#$...)</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- 5. Confirm Password -->
+        <div class="form-group">
+          <label for="reg-confirm" class="form-label">Confirm Password</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <path d="M7.5 13.5L3 9l1.05-1.05L7.5 11.4l6.45-6.45L15 6l-7.5 7.5z"/>
+            </svg>
+            <input id="reg-confirm" type="password" class="form-input"
+              [class.input-error]="passwordMismatch"
+              [(ngModel)]="confirmPassword" name="confirmPassword"
+              placeholder="Re-enter password" autocomplete="new-password" required />
+          </div>
+          @if (passwordMismatch) {
+            <span class="field-error">Passwords do not match</span>
+          }
+        </div>
+
+        @if (errorMessage) {
+          <div class="form-error" role="alert">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM7 4h2v5H7V4zm0 6h2v2H7v-2z"/>
+            </svg>
+            {{ errorMessage }}
+          </div>
         }
-      </button>
-    </form>
 
-    <div class="auth-footer">
-      <p>Already have an account? <a routerLink="/auth/login">Sign in</a></p>
+        <button id="register-submit" type="submit" class="btn-primary"
+          [disabled]="isLoading || passwordMismatch || !passwordValid || !username.trim() || !email.trim() || !confirmPassword.trim()">
+          @if (isLoading) {
+            <span class="spinner"></span>
+            Creating account...
+          } @else {
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" style="margin-right: 6px;">
+              <path d="M9 1.5a7.5 7.5 0 110 15 7.5 7.5 0 010-15zM8.25 5.25v3h-3v1.5h3v3h1.5v-3h3v-1.5h-3v-3h-1.5z"/>
+            </svg>
+            Create Account
+          }
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a routerLink="/auth/login">Sign in</a></p>
+      </div>
     </div>
   </div>
 </div>

@@ -13,8 +13,9 @@ import { RegisterRequest } from '../../../shared/models';
   styleUrl: './register.component.css',
 })
 export class RegisterComponent {
-  username = '';
   email = '';
+  username = '';
+  useSameAsEmail = false;
   password = '';
   confirmPassword = '';
   isLoading = false;
@@ -26,12 +27,67 @@ export class RegisterComponent {
     private readonly router: Router,
   ) {}
 
+  // ── "Same as email" toggle ──
+
+  /** When toggled on, derive username from the email prefix. */
+  onSameAsEmailToggle(): void {
+    if (this.useSameAsEmail) {
+      this.deriveUsernameFromEmail();
+    }
+  }
+
+  /** Called on every email input keystroke to keep the username in sync. */
+  onEmailInput(): void {
+    if (this.useSameAsEmail) {
+      this.deriveUsernameFromEmail();
+    }
+  }
+
+  /** Extracts the part before '@' from the email and uses it as the username. */
+  private deriveUsernameFromEmail(): void {
+    const atIndex = this.email.indexOf('@');
+    this.username = atIndex > 0 ? this.email.substring(0, atIndex) : this.email;
+  }
+
+  // ── Password strength validation (real-time) ──
+
+  get hasMinLength(): boolean {
+    return this.password.length >= 8;
+  }
+
+  get hasUppercase(): boolean {
+    return /[A-Z]/.test(this.password);
+  }
+
+  get hasLowercase(): boolean {
+    return /[a-z]/.test(this.password);
+  }
+
+  get hasNumber(): boolean {
+    return /\d/.test(this.password);
+  }
+
+  get hasSpecial(): boolean {
+    return /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(this.password);
+  }
+
+  /** True when ALL password rules are satisfied. */
+  get passwordValid(): boolean {
+    return this.hasMinLength && this.hasUppercase && this.hasLowercase && this.hasNumber && this.hasSpecial;
+  }
+
   get passwordMismatch(): boolean {
     return this.confirmPassword.length > 0 && this.password !== this.confirmPassword;
   }
 
+  /** True when the password has been started (show rules). */
+  get showPasswordRules(): boolean {
+    return this.password.length > 0;
+  }
+
   onSubmit(): void {
     if (this.passwordMismatch) return;
+    if (!this.passwordValid) return;
     if (!this.username.trim() || !this.email.trim() || !this.password.trim()) return;
 
     this.isLoading = true;

@@ -110,9 +110,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(
-                Arrays.asList(allowedOrigins.split(","))
-        );
+        if ("*".equals(allowedOrigins.trim())) {
+            // Wildcard dev mode — accept any origin (patterns API supports credentials)
+            configuration.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            configuration.setAllowedOrigins(
+                    Arrays.asList(allowedOrigins.split(","))
+            );
+        }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

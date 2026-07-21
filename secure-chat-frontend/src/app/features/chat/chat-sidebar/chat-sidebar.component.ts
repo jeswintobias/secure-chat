@@ -1,11 +1,13 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { GroupResponse, ConnectionRequestResponse, UserResponse } from '../../../shared/models';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { AuthService } from '../../../core/services/auth.service';
 import { GroupService } from '../../../core/services/group.service';
 import { ConnectionService } from '../../../core/services/connection.service';
+import { WebSocketService } from '../../../core/services/websocket.service';
 
 /**
  * Sidebar view states for the overlay panel.
@@ -27,7 +29,7 @@ const PINNED_CHATS_KEY = 'securechat_pinned_chats';
   styleUrl: './chat-sidebar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ChatSidebarComponent {
+export class ChatSidebarComponent implements OnInit, OnDestroy {
   @Input() conversations: GroupResponse[] = [];
   @Input() activeConversationId = '';
   @Input() currentUsername = '';
@@ -71,15 +73,50 @@ export class ChatSidebarComponent {
   // ── Pending Requests ──
   pendingRequests: ConnectionRequestResponse[] = [];
   pendingLoading = false;
+  pendingCount = 0;
+  private wsSub: Subscription | null = null;
 
   constructor(
     private readonly authService: AuthService,
     private readonly groupService: GroupService,
     private readonly connectionService: ConnectionService,
+    private readonly wsService: WebSocketService,
     private readonly cdr: ChangeDetectorRef,
   ) {
     // Load pinned chats from localStorage
     this.pinnedChatIds = this.loadPinnedChats();
+  }
+
+  ngOnInit(): void {
+    // Initial fetch to set the badge count
+    this.connectionService.getPendingRequests().subscribe({
+      next: (requests) => {
+        this.pendingCount = requests.length;
+        this.cdr.markForCheck();
+      }
+    });
+
+    // Listen for real-time connection requests
+    this.wsSub = this.wsService.watchConnectionRequests().subscribe({
+      next: (request) => {
+        if (request.status === 'PENDING') {
+          this.pendingCount++;
+          // Dynamically add to the list if the dialog is open
+          if (this.overlay === 'pending') {
+            if (!this.pendingRequests.some(r => r.id === request.id)) {
+              this.pendingRequests = [request, ...this.pendingRequests];
+            }
+          }
+          this.cdr.markForCheck();
+        }
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.wsSub) {
+      this.wsSub.unsubscribe();
+    }
   }
 
   /**
@@ -262,6 +299,7 @@ export class ChatSidebarComponent {
       next: (response) => {
         // Remove from pending list
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== requestId);
+        this.pendingCount = Math.max(0, this.pendingCount - 1);
         this.cdr.markForCheck();
         this.closeOverlay();
         // Emit to parent to reload conversations and select the new chat
@@ -279,6 +317,7 @@ export class ChatSidebarComponent {
     this.connectionService.rejectRequest(requestId).subscribe({
       next: () => {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== requestId);
+        this.pendingCount = Math.max(0, this.pendingCount - 1);
         this.cdr.markForCheck();
       },
       error: (err) => {

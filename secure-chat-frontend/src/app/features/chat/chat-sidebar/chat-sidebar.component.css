@@ -13,14 +13,10 @@
   padding: 10px 16px; height: var(--header-height);
   background: var(--bg-tertiary);
 }
-.user-profile { display: flex; align-items: center; gap: 12px; }
-.user-avatar {
-  width: 40px; height: 40px; border-radius: var(--radius-full);
-  background: var(--accent-primary); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 600; font-size: 16px;
+.sidebar-title {
+  font-size: 22px; font-weight: 700; color: var(--text-primary);
+  margin: 0; letter-spacing: -0.3px;
 }
-.user-name { font-weight: 500; color: var(--text-primary); font-size: 15px; }
 .header-actions { display: flex; gap: 4px; }
 .icon-btn {
   width: 40px; height: 40px; border-radius: var(--radius-full);
@@ -28,6 +24,24 @@
   color: var(--text-secondary); transition: background var(--transition-fast), color var(--transition-fast);
 }
 .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-tertiary);
+  pointer-events: none;
+}
 .search-container { padding: 8px 12px; }
 .search-bar {
   display: flex; align-items: center; gap: 12px;

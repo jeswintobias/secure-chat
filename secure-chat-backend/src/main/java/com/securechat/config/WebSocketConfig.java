@@ -60,10 +60,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry
-                .addEndpoint("/ws")
-                .setAllowedOrigins(allowedOrigins.split(","))
-                .withSockJS();
+        if ("*".equals(allowedOrigins.trim())) {
+            // Wildcard dev mode — accept any origin (patterns API supports credentials)
+            registry
+                    .addEndpoint("/ws")
+                    .setAllowedOriginPatterns("*")
+                    .withSockJS();
+        } else {
+            registry
+                    .addEndpoint("/ws")
+                    .setAllowedOrigins(allowedOrigins.split(","))
+                    .withSockJS();
+        }
     }
 
     /**

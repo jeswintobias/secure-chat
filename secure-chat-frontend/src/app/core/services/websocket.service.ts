@@ -8,6 +8,8 @@ import { TypingIndicatorPayload } from '../../shared/models/typing.dto';
 import { WebSocketMessagePayload, MessageReadPayload } from '../../shared/models/message.dto';
 import { RosterUpdatePayload } from '../../shared/models/roster.dto';
 import { WebSocketErrorPayload } from '../../shared/models/websocket-error.dto';
+import { ConnectionRequestResponse } from '../../shared/models/connection.dto';
+import { PresencePayload } from '../../shared/models/presence.dto';
 
 /**
  * Production-grade reactive WebSocket service wrapping @stomp/rx-stomp.
@@ -46,8 +48,10 @@ export class WebSocketService implements OnDestroy {
    */
   connect(): void {
     const config: RxStompConfig = {
-      // SockJS transport URL — matches backend's /ws endpoint with SockJS fallback
-      brokerURL: `${environment.wsUrl}/websocket`,
+      // SockJS transport URL — matches backend's /ws endpoint with SockJS fallback.
+      // When wsUrl is relative (e.g. '/ws'), we build an absolute ws:// URL
+      // from the current page host so the Angular proxy forwards correctly.
+      brokerURL: this.buildWsUrl(),
 
       // Dynamic JWT injection on every (re)connection attempt
       beforeConnect: (client) => {
@@ -199,6 +203,62 @@ export class WebSocketService implements OnDestroy {
     return this.rxStomp
       .watch('/user/queue/errors')
       .pipe(map(message => JSON.parse(message.body) as WebSocketErrorPayload));
+  }
+
+  /**
+   * Subscribes to real-time connection request notifications.
+   *
+   * STOMP destination: /user/queue/connection-requests
+   *
+   * The backend sends notifications here when:
+   * - A new connection request is received (status: PENDING)
+   * - A sent connection request is accepted (status: ACCEPTED)
+   *
+   * This is critical for bidirectional visibility — without this subscription,
+   * the sender's conversation list would never update after acceptance.
+   */
+  watchConnectionRequests(): Observable<ConnectionRequestResponse> {
+    return this.rxStomp
+      .watch('/user/queue/connection-requests')
+      .pipe(map(message => JSON.parse(message.body) as ConnectionRequestResponse));
+  }
+
+  /**
+   * Subscribes to user presence (online/offline) events.
+   *
+   * STOMP destination: /topic/presence
+   *
+   * The backend broadcasts here when a user's WebSocket session
+   * connects or disconnects (via WebSocketPresenceListener).
+   */
+  watchPresence(): Observable<PresencePayload> {
+    return this.rxStomp
+      .watch('/topic/presence')
+      .pipe(map(message => JSON.parse(message.body) as PresencePayload));
+  }
+
+  /**
+   * Builds an absolute WebSocket URL for the STOMP connection.
+   *
+   * When wsUrl is relative (e.g. '/ws'), we construct the full URL from
+   * window.location so the connection goes through the Angular dev server
+   * (which proxies it to the backend). This ensures any dynamically
+   * assigned port works without CORS issues.
+   */
+  private buildWsUrl(): string {
+    const wsUrl = environment.wsUrl;
+    if (wsUrl.startsWith('ws://') || wsUrl.startsWith('wss://')) {
+      // Already an absolute WebSocket URL — use as-is
+      return wsUrl;
+    }
+    if (wsUrl.startsWith('http://') || wsUrl.startsWith('https://')) {
+      // HTTP URL — convert to ws:// protocol
+      return wsUrl.replace(/^http/, 'ws') + '/websocket';
+    }
+    // Relative path — build from current page location so the Angular
+    // proxy forwards the request to the backend on any port.
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${wsUrl}/websocket`;
   }
 
   ngOnDestroy(): void {

@@ -11,3 +11,4 @@ export * from './api-error.dto';
 export * from './roster.dto';
 export * from './websocket-error.dto';
 export * from './connection.dto';
+export * from './presence.dto';

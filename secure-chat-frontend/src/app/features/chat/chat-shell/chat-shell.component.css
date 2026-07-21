@@ -1,3 +1,10 @@
+/* ═══════════════════════════════════════════════════════════
+   Chat Shell — WhatsApp Web 3-Column Layout
+   Column 1: Utility Bar (slim, ~56px)
+   Column 2: Sidebar / Conversation List
+   Column 3: Main Chat Panel
+   ═══════════════════════════════════════════════════════════ */
+
 .chat-layout {
   display: flex;
   height: 100vh;
@@ -6,24 +13,99 @@
   background: var(--bg-primary);
 }
 
+/* ════════════════════════════════════════
+   Column 1: Slim Utility Bar
+   ════════════════════════════════════════ */
+
+.utility-bar {
+  width: 56px;
+  min-width: 56px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #181c1c;
+  padding: 10px 0;
+  z-index: 2;
+}
+
+.utility-top,
+.utility-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.utility-bottom {
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+.util-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8696a0;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  position: relative;
+}
+
+.util-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e9edef;
+}
+
+.util-btn.active {
+  color: #e9edef;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.util-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #00a884;
+  border-radius: 0 3px 3px 0;
+}
+
+.util-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #00a884;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.util-avatar:hover {
+  transform: scale(1.08);
+}
+
+/* ════════════════════════════════════════
+   Column 3: Main Chat Panel
+   ════════════════════════════════════════ */
+
 .chat-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   position: relative;
-  background: var(--bg-primary);
-}
-
-/* Chat area subtle pattern background */
-.chat-main::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
+  background: #202c33;
 }
 
 /* ── WebSocket Error Toast ── */

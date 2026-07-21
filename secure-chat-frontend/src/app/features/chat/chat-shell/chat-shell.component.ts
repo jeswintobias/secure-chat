@@ -7,7 +7,7 @@ import { GroupService } from '../../../core/services/group.service';
 import { ConnectionService } from '../../../core/services/connection.service';
 import { MessageService } from '../../../core/services/message.service';
 import { FileUploadService } from '../../../core/services/file-upload.service';
-import { GroupResponse, MessageResponse, TypingIndicatorPayload, RosterUpdatePayload, MessageReadPayload, WebSocketErrorPayload } from '../../../shared/models';
+import { GroupResponse, MessageResponse, TypingIndicatorPayload, RosterUpdatePayload, MessageReadPayload, WebSocketErrorPayload, ConnectionRequestResponse, PresencePayload } from '../../../shared/models';
 import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
 import { ChatHeaderComponent } from '../chat-header/chat-header.component';
 import { MessageWindowComponent } from '../message-window/message-window.component';
@@ -63,6 +63,8 @@ export class ChatShellComponent implements OnInit, OnDestroy {
   private wsErrorSub?: Subscription;
   /** Roster subscriptions — one per loaded group. */
   private rosterSubs: Subscription[] = [];
+  private wsConnectionSub?: Subscription;
+  private wsPresenceSub?: Subscription;
 
   constructor(
     private readonly authService: AuthService,
@@ -123,6 +125,33 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsErrorSub = this.wsService.watchErrors().subscribe({
       next: (error: WebSocketErrorPayload) => {
         this.showWsError(error);
+      },
+    });
+
+    // Subscribe to real-time connection request notifications.
+    // This is the critical fix for bidirectional visibility — previously the
+    // sender's conversation list was never updated after acceptance.
+    this.wsConnectionSub = this.wsService.watchConnectionRequests().subscribe({
+      next: (request: ConnectionRequestResponse) => {
+        if (request.status === 'ACCEPTED' && request.conversationId) {
+          // A connection request was accepted — reload conversations so
+          // the new private chat appears immediately for BOTH users.
+          this.groupService.getMyConversations().subscribe({
+            next: (conversations) => {
+              this.groups = conversations;
+              this.subscribeToAllRosters();
+            },
+            error: (err) => console.error('Failed to reload conversations after acceptance:', err),
+          });
+        }
+      },
+    });
+
+    // Subscribe to presence (online/offline) events for real-time status updates.
+    this.wsPresenceSub = this.wsService.watchPresence().subscribe({
+      next: (payload: PresencePayload) => {
+        // Log for debugging; presence data can be used by sidebar/header later
+        console.debug(`[Presence] ${payload.username} is now ${payload.online ? 'ONLINE' : 'OFFLINE'}`);
       },
     });
   }
@@ -325,6 +354,8 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsTypingSub?.unsubscribe();
     this.wsReadSub?.unsubscribe();
     this.wsErrorSub?.unsubscribe();
+    this.wsConnectionSub?.unsubscribe();
+    this.wsPresenceSub?.unsubscribe();
     if (this.wsErrorTimeout) clearTimeout(this.wsErrorTimeout);
     this.unsubscribeAllRosters();
     this.wsService.disconnect();
