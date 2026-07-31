@@ -49,7 +49,8 @@ For an in-depth look at our models, controllers, and frontend structure, please 
    cd secure-chat-backend
    ```
 2. Configure your database and environment variables in `.env` / `application.yml`.
-3. Run the Spring Boot application:
+3. **File Uploads**: The application stores file attachments locally in the `secure-chat-backend/uploads/` directory.
+4. Run the Spring Boot application:
    ```bash
    mvn spring-boot:run
    ```
@@ -68,6 +69,9 @@ For an in-depth look at our models, controllers, and frontend structure, please 
    ng serve
    ```
 4. Access the app at `http://localhost:4200`.
+
+### Testing
+You can run the provided `test-chat.ps1` PowerShell script located in the root of the repository to quickly test the chat API endpoints and verify functionality.
 
 ## 🤝 Contributing
 
