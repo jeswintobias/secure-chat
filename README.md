@@ -1,5 +1,7 @@
 # 🔒 Secure Chat System
 
+[![Build & Test](https://github.com/jeswintobias/secure-chat/actions/workflows/build.yml/badge.svg)](https://github.com/jeswintobias/secure-chat/actions/workflows/build.yml)
+
 Welcome to the **Secure Chat System** repository! This is a full-stack, real-time secure messaging application built with a modern tech stack focusing on performance, security, and exceptional user experience.
 
 ## ✨ Unique Selling Propositions (USPs) & Features
@@ -9,8 +11,8 @@ Here's what we have built so far:
 - **Real-Time Communication**: Lightning-fast message delivery using **WebSocket** and the **STOMP** protocol.
 - **Robust Security**: 
   - JWT-based Authentication & Role-based Authorization (`USER` & `ADMIN`).
-  - XSS-sanitized persistence to protect against cross-site scripting.
-  - End-to-end focus with public key provision for securing outbound messages.
+  - XSS-sanitized persistence (JSoup strict whitelist) to protect against cross-site scripting.
+  - 4-layer URL security pipeline (syntax validation, DNS/SSRF protection, HTTP content-type probing, Google Safe Browsing integration) to block malicious links in messages.
 - **Self-Destructing (Ephemeral) Messages**: Send messages that automatically expire after a set time.
 - **Rich Media Sharing**: Support for file and image attachments (up to 10MB).
 - **Group Chats**: Create private or group conversations with secure, referral-code-based joining.
@@ -71,7 +73,20 @@ For an in-depth look at our models, controllers, and frontend structure, please 
 4. Access the app at `http://localhost:4200`.
 
 ### Testing
-You can run the provided `test-chat.ps1` PowerShell script located in the root of the repository to quickly test the chat API endpoints and verify functionality.
+
+#### Automated Tests
+```bash
+# Backend: JUnit 5 + Mockito unit tests and Spring Boot integration tests (H2 in-memory DB)
+cd secure-chat-backend
+mvn test -Dspring.profiles.active=test
+
+# Frontend: Karma + Jasmine tests (Chrome headless)
+cd secure-chat-frontend
+npx ng test --browsers=ChromeHeadless --watch=false
+```
+
+#### Manual API Testing
+You can also run the provided `test-chat.ps1` PowerShell script located in the root of the repository to quickly test the chat API endpoints and verify functionality.
 
 ## 🤝 Contributing
 

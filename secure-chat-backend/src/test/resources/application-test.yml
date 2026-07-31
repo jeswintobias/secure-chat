@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: com.securechat.config.H2NamedEnumDialect
+    open-in-view: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  sql:
+    init:
+      mode: never
+
+app:
+  jwt:
+    secret: dGVzdFNlY3JldEtleUZvclVuaXRUZXN0aW5nUHVycG9zZXNPbmx5MTIzNDU2Nzg5MA==
+    expiration-ms: 86400000
+
+  websocket:
+    allowed-origins: "*"
+
+  security:
+    url-validation:
+      enabled: false
+      timeout-seconds: 3
+      max-redirects: 3
+      blocked-extensions: .exe,.bat,.cmd,.scr,.msi,.ps1,.vbs,.dll,.com,.jar,.sh
+      blocked-mime-types: application/x-msdownload
+    safe-browsing-api-key: ""
+
+  cors:
+    allowed-origins: "*"
+
+server:
+  port: 0
+
+logging:
+  level:
+    root: WARN
+    com.securechat: INFO
