@@ -65,7 +65,7 @@ public class MessageService {
             String content,
             Integer expiryMinutes
     ) {
-        return sendMessage(conversationId, senderUsername, content, expiryMinutes, null, null);
+        return sendMessage(conversationId, senderUsername, content, expiryMinutes, null, null, null);
     }
 
     /**
@@ -77,6 +77,7 @@ public class MessageService {
      * @param expiryMinutes  optional ephemeral expiry (null or 0 = no expiry)
      * @param attachmentUrl  optional URL to an uploaded file
      * @param attachmentType optional MIME type of the attachment
+     * @param originalName   optional original filename
      * @return the created message as a DTO
      */
     @Transactional
@@ -86,7 +87,8 @@ public class MessageService {
             String content,
             Integer expiryMinutes,
             String attachmentUrl,
-            String attachmentType
+            String attachmentType,
+            String originalName
     ) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() ->
@@ -150,6 +152,10 @@ public class MessageService {
         if (attachmentUrl != null && !attachmentUrl.isBlank()) {
             if (attachmentType != null && attachmentType.startsWith("image/")) {
                 messageType = ChatMessage.MessageType.IMAGE;
+            } else if (attachmentType != null && attachmentType.startsWith("audio/")) {
+                messageType = ChatMessage.MessageType.AUDIO;
+            } else if (attachmentType != null && attachmentType.startsWith("video/")) {
+                messageType = ChatMessage.MessageType.VIDEO;
             } else {
                 messageType = ChatMessage.MessageType.FILE;
             }
@@ -163,6 +169,7 @@ public class MessageService {
                 .expiresAt(expiresAt)
                 .attachmentUrl(attachmentUrl)
                 .attachmentType(attachmentType)
+                .originalName(originalName)
                 .build();
 
         ChatMessage saved = messageRepository.save(message);
@@ -309,6 +316,50 @@ public class MessageService {
     }
 
     /**
+     * Bulk-marks all unread messages in a conversation as read by the given user.
+     *
+     * @param conversationId the conversation ID
+     * @param username       the username of the reader
+     * @return a list of new MessageReadDto receipts (for WebSocket broadcast)
+     */
+    @Transactional
+    public List<MessageReadDto> markConversationAsRead(UUID conversationId, String username) {
+        if (!conversationRepository.existsById(conversationId)) {
+            throw new ResourceNotFoundException("Conversation not found: " + conversationId);
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        List<ChatMessage> unreadMessages = messageRepository.findUnreadMessagesByConversationIdAndUserId(
+                conversationId, user.getId()
+        );
+
+        if (unreadMessages.isEmpty()) {
+            return List.of();
+        }
+
+        Instant now = Instant.now();
+        List<MessageRead> newReads = unreadMessages.stream()
+                .map(msg -> MessageRead.builder()
+                        .message(msg)
+                        .user(user)
+                        .readAt(now)
+                        .build())
+                .collect(Collectors.toList());
+
+        messageReadRepository.saveAll(newReads);
+
+        return newReads.stream()
+                .map(r -> MessageReadDto.builder()
+                        .userId(r.getUser().getId())
+                        .username(r.getUser().getUsername())
+                        .readAt(r.getReadAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Converts a ChatMessage entity to a MessageResponse DTO.
      * This is the ONLY place where entity-to-DTO mapping occurs for messages.
      *
@@ -336,6 +387,7 @@ public class MessageService {
                 .expiresAt(message.getExpiresAt())
                 .attachmentUrl(message.getAttachmentUrl())
                 .attachmentType(message.getAttachmentType())
+                .originalName(message.getOriginalName())
                 .pinned(message.isPinned())
                 .pinnedBy(message.getPinnedBy())
                 .pinnedAt(message.getPinnedAt())

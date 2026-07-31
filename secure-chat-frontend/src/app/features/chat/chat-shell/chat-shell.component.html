@@ -48,8 +48,26 @@
       </button>
 
       <!-- User Profile Avatar -->
-      <div class="util-avatar" [title]="currentUsername">
-        {{ currentUsername.charAt(0).toUpperCase() }}
+      <div class="util-avatar-wrapper">
+        <div class="util-avatar" [title]="currentUsername" (click)="toggleProfilePopup()">
+          {{ currentUsername.charAt(0).toUpperCase() }}
+        </div>
+
+        @if (isProfilePopupOpen) {
+          <div class="profile-popup">
+            <div class="profile-popup-avatar">
+              {{ currentUsername.charAt(0).toUpperCase() }}
+            </div>
+            <div class="profile-popup-name">{{ currentUsername }}</div>
+            <div class="profile-popup-email">{{ currentEmail || 'No email provided' }}</div>
+            <button class="profile-popup-logout" (click)="onLogout()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+              </svg>
+              Log out
+            </button>
+          </div>
+        }
       </div>
     </div>
   </nav>
@@ -59,6 +77,8 @@
     [conversations]="groups"
     [activeConversationId]="activeConversation?.id ?? ''"
     [currentUsername]="currentUsername"
+    [presenceMap]="presenceMap"
+    [unreadCounts]="unreadCounts"
     (conversationSelected)="onConversationSelected($event)"
     (groupCreated)="onGroupCreated($event)"
     (groupJoined)="onGroupJoined($event)"
@@ -98,4 +118,5 @@
       <app-empty-state></app-empty-state>
     }
   </main>
+
 </div>

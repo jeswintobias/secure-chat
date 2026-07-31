@@ -66,12 +66,16 @@ public class AuthService {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
 
-        // Build and persist the new user with hashed password
+        // Build and persist the new user with hashed password.
+        // onlineStatus is set to true because the user auto-logs-in after
+        // registration and immediately connects to WebSocket. This avoids
+        // a race window where other users could see them as offline.
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
+                .onlineStatus(true)
                 .build();
 
         userRepository.save(user);
@@ -84,6 +88,7 @@ public class AuthService {
                 .token(token)
                 .tokenType("Bearer")
                 .username(user.getUsername())
+                .email(user.getEmail())
                 .role(user.getRole().name())
                 .expiresIn(jwtTokenProvider.getExpirationMs())
                 .build();
@@ -120,6 +125,7 @@ public class AuthService {
                 .token(token)
                 .tokenType("Bearer")
                 .username(user.getUsername())
+                .email(user.getEmail())
                 .role(user.getRole().name())
                 .expiresIn(jwtTokenProvider.getExpirationMs())
                 .build();

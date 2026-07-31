@@ -31,14 +31,18 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * {@code idx_users_username_pattern} B-tree index with {@code varchar_pattern_ops}.
      * Results are limited to 10 to prevent excessive data retrieval.
      *
-     * @param prefix the prefix to search for (lowercase)
+     * <p>The caller must append the {@code %} wildcard to the pattern before calling
+     * (e.g. {@code "kio%"}). This avoids JDBC parameter-binding issues with the
+     * {@code ||} concatenation operator inside native queries.
+     *
+     * @param pattern the LIKE pattern to search for (lowercase prefix + '%')
      * @return up to 10 matching users
      */
     @Query(value = """
             SELECT * FROM users
-            WHERE LOWER(username) LIKE :prefix || '%'
+            WHERE LOWER(username) LIKE :pattern
             ORDER BY username
             LIMIT 10
             """, nativeQuery = true)
-    List<User> searchByUsernamePrefix(@Param("prefix") String prefix);
+    List<User> searchByUsernamePrefix(@Param("pattern") String pattern);
 }

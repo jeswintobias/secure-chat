@@ -32,14 +32,19 @@ export class MessageWindowComponent implements AfterViewChecked {
   /** Determines if a date separator should be shown above a message. */
   showDateSeparator(index: number): boolean {
     if (index === 0) return true;
-    const current = new Date(this.messages[index].createdAt).toDateString();
-    const prev = new Date(this.messages[index - 1].createdAt).toDateString();
+    const currentDate = this.messages[index].createdAt;
+    const prevDate = this.messages[index - 1].createdAt;
+    if (!currentDate || !prevDate) return false;
+    const current = new Date(currentDate).toDateString();
+    const prev = new Date(prevDate).toDateString();
     return current !== prev;
   }
 
   /** Formats a date for the separator label. */
   formatDateSeparator(dateStr: string): string {
+    if (!dateStr) return 'Today';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime()) || date.getTime() === 0) return 'Today';
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);

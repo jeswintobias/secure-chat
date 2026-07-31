@@ -85,7 +85,8 @@ public class ChatController {
                 payload.getContent(),
                 payload.getExpiryMinutes(),
                 payload.getAttachmentUrl(),
-                payload.getAttachmentType()
+                payload.getAttachmentType(),
+                payload.getOriginalName()
         );
 
         // Broadcast the sanitized message to all subscribers of this conversation
@@ -173,6 +174,40 @@ public class ChatController {
     ) {
         Page<MessageResponse> messages = messageService.getConversationHistory(conversationId, page, size);
         return ResponseEntity.ok(messages);
+    }
+
+    /**
+     * Marks all unread messages in a conversation as read by the authenticated user.
+     * Broadcasts the read receipts via WebSocket.
+     *
+     * @param conversationId the conversation
+     * @param principal      the authenticated user
+     * @return 200 OK
+     */
+    @PostMapping("/conversations/{conversationId}/read")
+    public ResponseEntity<Void> markConversationAsRead(
+            @PathVariable UUID conversationId,
+            Principal principal
+    ) {
+        String username = principal.getName();
+        List<MessageReadDto> newReads = messageService.markConversationAsRead(conversationId, username);
+
+        // Broadcast each new read receipt via WebSocket
+        for (MessageReadDto readDto : newReads) {
+            MessageReadPayload payload = MessageReadPayload.builder()
+                    .conversationId(conversationId)
+                    .userId(readDto.getUserId())
+                    .username(readDto.getUsername())
+                    .readAt(readDto.getReadAt())
+                    .build();
+            
+            messagingTemplate.convertAndSend(
+                    "/topic/conversation/" + conversationId + "/read",
+                    payload
+            );
+        }
+
+        return ResponseEntity.ok().build();
     }
 
     /**

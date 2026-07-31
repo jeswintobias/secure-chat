@@ -80,4 +80,17 @@ export class MessageService {
       {},
     );
   }
+
+  /**
+   * Marks all messages in a conversation as read by the current user.
+   * Broadcasts read receipts via WebSocket.
+   *
+   * @param conversationId UUID of the conversation
+   */
+  markConversationAsRead(conversationId: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.baseUrl}/${conversationId}/read`,
+      {},
+    );
+  }
 }

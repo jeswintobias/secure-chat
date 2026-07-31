@@ -33,4 +33,7 @@ public class WebSocketMessagePayload {
 
     /** MIME type of the attachment. */
     private String attachmentType;
+
+    /** Original filename of the attachment. */
+    private String originalName;
 }

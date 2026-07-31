@@ -94,6 +94,30 @@
 .empty-conversations p { font-size: 15px; margin-bottom: 4px; color: var(--text-secondary); }
 .empty-conversations span { font-size: 13px; }
 
+/* ── Unread Message Badge ── */
+.unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #00a884;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+  animation: badgePop 0.25s ease;
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
 /* ── Pinned Chat Styles ── */
 
 .conversation-item.pinned {
@@ -503,4 +527,67 @@
   color: #31c553;
   font-size: 13px;
   margin-top: 8px;
+}
+
+/* ── Logout / More Options Overlay (Dark Red Theme) ── */
+
+.logout-overlay-panel {
+  background: linear-gradient(145deg, #2a0808, #1a0505);
+  border: 1px solid #4a1515;
+  box-shadow: 0 10px 30px rgba(220, 38, 38, 0.2);
+}
+
+.logout-overlay-panel .overlay-header {
+  border-bottom: 1px solid #4a1515;
+}
+
+.logout-overlay-panel .overlay-title {
+  color: #ff8a8a;
+}
+
+.logout-overlay-panel .overlay-close {
+  color: #ff8a8a;
+}
+
+.logout-overlay-panel .overlay-close:hover {
+  background: rgba(255, 138, 138, 0.1);
+  color: #ffb3b3;
+}
+
+.logout-overlay-panel .overlay-footer {
+  border-top: 1px solid #4a1515;
+}
+
+.logout-overlay-panel .btn-secondary {
+  color: #ff8a8a;
+  border-color: #4a1515;
+}
+
+.logout-overlay-panel .btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 138, 138, 0.1);
+  color: #ffb3b3;
+}
+
+.btn-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, #e91e63, #dc2626);
+  color: white;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-logout:hover {
+  background: linear-gradient(90deg, #f43f5e, #ef4444);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
 }

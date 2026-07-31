@@ -3,18 +3,44 @@
   <div class="file-error-toast">{{ fileSizeError }}</div>
 }
 
-<!-- Attachment Preview Strip -->
+<!-- WhatsApp-style Full Screen Preview Overlay -->
 @if (selectedFile) {
-  <div class="attachment-preview">
-    @if (isFileImage && filePreviewUrl) {
-      <img [src]="filePreviewUrl" alt="Preview" class="preview-image" />
-    } @else {
-      <div class="preview-file">
-        <span class="preview-file-icon">📄</span>
-        <span class="preview-file-name">{{ selectedFile.name }}</span>
+  <div class="preview-overlay">
+    <div class="preview-header">
+      <button class="preview-close-btn" (click)="removeFile()" title="Cancel">&times;</button>
+      <div class="preview-title">Preview</div>
+    </div>
+    
+    <div class="preview-content">
+      @if (isFileImage && filePreviewUrl) {
+        <img [src]="filePreviewUrl" alt="Preview" class="preview-image-large" />
+      } @else if (isFileVideo && filePreviewUrl) {
+        <video [src]="filePreviewUrl" controls class="preview-video-large"></video>
+      } @else {
+        <div class="preview-file-large">
+          <span class="preview-file-icon-large">📄</span>
+          <span class="preview-file-name-large">{{ selectedFile.name }}</span>
+          <span class="preview-file-size">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+        </div>
+      }
+    </div>
+
+    <div class="preview-footer">
+      <div class="preview-input-container">
+        <textarea
+          class="preview-caption-input"
+          [(ngModel)]="messageText"
+          (keydown)="onKeyDown($event)"
+          placeholder="Add a caption..."
+          rows="1"
+        ></textarea>
+        <button class="preview-send-btn" (click)="send()" title="Send">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
       </div>
-    }
-    <button class="preview-remove" (click)="removeFile()" title="Remove attachment">&times;</button>
+    </div>
   </div>
 }
 
@@ -49,16 +75,18 @@
       </svg>
     </button>
 
-    <!-- Message textarea -->
-    <textarea
-      id="message-input"
-      class="message-textarea"
-      [(ngModel)]="messageText"
-      (input)="onInput()"
-      (keydown)="onKeyDown($event)"
-      placeholder="Type a message"
-      rows="1"
-    ></textarea>
+    <!-- Message textarea (hidden if preview is active to prevent double input) -->
+    @if (!selectedFile) {
+      <textarea
+        id="message-input"
+        class="message-textarea"
+        [(ngModel)]="messageText"
+        (input)="onInput()"
+        (keydown)="onKeyDown($event)"
+        placeholder="Type a message"
+        rows="1"
+      ></textarea>
+    }
 
     <!-- Expiry button -->
     <div class="expiry-wrapper">

@@ -10,7 +10,7 @@
  */
 
 /** PostgreSQL ENUM: message_type */
-export type MessageType = 'TEXT' | 'SYSTEM' | 'IMAGE' | 'FILE';
+export type MessageType = 'TEXT' | 'SYSTEM' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO';
 
 /**
  * Maps to: com.securechat.dto.response.MessageReadDto
@@ -45,6 +45,9 @@ export interface MessageResponse {
   /** MIME type of the attachment (e.g. image/png, application/pdf). */
   readonly attachmentType: string | null;
 
+  /** Original filename of the attachment (human-readable). */
+  readonly originalName: string | null;
+
   /** Whether this message is pinned in its conversation. */
   readonly pinned: boolean;
 
@@ -73,6 +76,9 @@ export interface WebSocketMessagePayload {
 
   /** MIME type of the attachment. */
   readonly attachmentType?: string | null;
+
+  /** Original filename of the attachment. */
+  readonly originalName?: string | null;
 }
 
 /**

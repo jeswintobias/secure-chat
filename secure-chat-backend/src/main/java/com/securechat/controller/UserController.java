@@ -65,7 +65,7 @@ public class UserController {
 
         String prefix = query.trim().toLowerCase();
 
-        List<UserResponse> results = userRepository.searchByUsernamePrefix(prefix)
+        List<UserResponse> results = userRepository.searchByUsernamePrefix(prefix + "%")
                 .stream()
                 .filter(u -> !u.getUsername().equals(principal.getName())) // exclude self
                 .map(this::toUserResponse)

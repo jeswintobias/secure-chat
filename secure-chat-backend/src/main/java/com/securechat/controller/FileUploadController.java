@@ -31,7 +31,7 @@ public class FileUploadController {
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
 
-    @Value("${app.upload.max-size-mb:10}")
+    @Value("${app.upload.max-size-mb:25}")
     private int maxSizeMb;
 
     /**
@@ -98,9 +98,12 @@ public class FileUploadController {
             contentType = "application/octet-stream";
         }
 
+        String disposition = (contentType.startsWith("image/") || contentType.startsWith("video/") || contentType.startsWith("audio/") || contentType.equals("application/pdf")) 
+                ? "inline" : "attachment";
+
         return ResponseEntity.ok()
                 .header("Content-Type", contentType)
-                .header("Content-Disposition", "inline; filename=\"" + filename + "\"")
+                .header("Content-Disposition", disposition + "; filename=\"" + filename + "\"")
                 .body(fileBytes);
     }
 }

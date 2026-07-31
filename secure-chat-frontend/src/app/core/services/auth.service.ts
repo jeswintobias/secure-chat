@@ -7,6 +7,7 @@ import { AuthResponse, LoginRequest, RegisterRequest } from '../../shared/models
 
 const TOKEN_KEY = 'securechat_jwt';
 const USER_KEY = 'securechat_user';
+const EMAIL_KEY = 'securechat_email';
 const ROLE_KEY = 'securechat_role';
 
 /**
@@ -58,6 +59,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(EMAIL_KEY);
     localStorage.removeItem(ROLE_KEY);
     this.currentUserSubject.next(null);
     this.router.navigate(['/auth/login']);
@@ -78,6 +80,11 @@ export class AuthService {
     return localStorage.getItem(USER_KEY) ?? '';
   }
 
+  /** Returns the stored email or empty string. */
+  getCurrentEmail(): string {
+    return localStorage.getItem(EMAIL_KEY) ?? '';
+  }
+
   /** Returns the stored role or 'USER' as default. */
   getCurrentRole(): 'USER' | 'ADMIN' {
     return (localStorage.getItem(ROLE_KEY) as 'USER' | 'ADMIN') ?? 'USER';
@@ -95,6 +102,7 @@ export class AuthService {
   private handleAuthSuccess(response: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, response.token);
     localStorage.setItem(USER_KEY, response.username);
+    localStorage.setItem(EMAIL_KEY, response.email);
     localStorage.setItem(ROLE_KEY, response.role);
     this.currentUserSubject.next(response.username);
   }

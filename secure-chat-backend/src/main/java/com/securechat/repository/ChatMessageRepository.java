@@ -69,4 +69,26 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     List<ChatMessage> findPinnedMessagesByConversationId(
             @Param("conversationId") UUID conversationId
     );
+
+    /**
+     * Finds all unread messages in a conversation for a specific user.
+     * Excludes messages sent by the user themselves.
+     *
+     * @param conversationId the conversation
+     * @param userId         the reader's user ID
+     * @return list of unread messages
+     */
+    @Query("""
+            SELECT m FROM ChatMessage m
+            WHERE m.conversation.id = :conversationId
+              AND m.sender.id != :userId
+              AND NOT EXISTS (
+                  SELECT 1 FROM MessageRead mr
+                  WHERE mr.message.id = m.id AND mr.user.id = :userId
+              )
+            """)
+    List<ChatMessage> findUnreadMessagesByConversationIdAndUserId(
+            @Param("conversationId") UUID conversationId,
+            @Param("userId") UUID userId
+    );
 }

@@ -29,6 +29,11 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
 
+  # -------------------- Jackson --------------------
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
   # -------------------- SQL Init (schema bootstrap) --------------------
   sql:
     init:

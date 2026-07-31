@@ -9,7 +9,11 @@ export class RelativeTimePipe implements PipeTransform {
   transform(value: string | null | undefined): string {
     if (!value) return '';
 
-    const date = new Date(value);
+    let dateStr = value;
+    if (!dateStr.endsWith('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+      dateStr += 'Z';
+    }
+    const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSec = Math.floor(diffMs / 1000);

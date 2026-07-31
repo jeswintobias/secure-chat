@@ -43,6 +43,9 @@ public class MessageResponse {
     /** MIME type of the attachment (e.g. image/png, application/pdf). */
     private String attachmentType;
 
+    /** Original filename of the attachment (human-readable). */
+    private String originalName;
+
     /** Whether this message is pinned in its conversation. */
     private boolean pinned;
 

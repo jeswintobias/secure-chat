@@ -40,36 +40,164 @@
 .icon-btn:hover { background: var(--accent-light); color: var(--accent-hover); }
 .icon-btn.active { color: var(--accent-primary); }
 
-/* ── Attachment Preview Strip ── */
-.attachment-preview {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 16px; background: var(--bg-tertiary);
-  border-top: 1px solid var(--border-subtle);
-  animation: slideUp 0.2s ease;
+/* ════════════════════════════════════════
+   WhatsApp-style Full Screen Preview Overlay
+   ════════════════════════════════════════ */
+
+.preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(11, 20, 26, 0.95);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease-out;
 }
-.preview-image {
-  width: 80px; height: 80px; object-fit: cover;
-  border-radius: var(--radius-xs);
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-.preview-file {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 12px; background: var(--bg-primary);
-  border-radius: var(--radius-xs);
+
+.preview-header {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
-.preview-file-icon { font-size: 24px; }
-.preview-file-name {
-  font-size: 13px; color: var(--text-primary);
-  max-width: 200px; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
+
+.preview-close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 32px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
 }
-.preview-remove {
-  margin-left: auto; width: 28px; height: 28px;
-  border-radius: var(--radius-full); font-size: 18px;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-muted); cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+
+.preview-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
-.preview-remove:hover { background: rgba(234, 67, 53, 0.15); color: var(--color-danger); }
+
+.preview-title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.preview-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.preview-image-large {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.preview-video-large {
+  max-width: 100%;
+  max-height: 100%;
+  outline: none;
+}
+
+.preview-file-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: #202c33;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.preview-file-icon-large {
+  font-size: 64px;
+}
+
+.preview-file-name-large {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 500;
+  text-align: center;
+  word-break: break-all;
+}
+
+.preview-file-size {
+  color: #8696a0;
+  font-size: 14px;
+}
+
+.preview-footer {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  background: rgba(11, 20, 26, 0.9);
+}
+
+.preview-input-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 800px;
+  background: #202c33;
+  padding: 8px 12px;
+  border-radius: 24px;
+}
+
+.preview-caption-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #d1d7db;
+  font-size: 15px;
+  resize: none;
+  padding: 8px;
+  outline: none;
+  font-family: inherit;
+}
+
+.preview-caption-input::placeholder {
+  color: #8696a0;
+}
+
+.preview-send-btn {
+  background: #00a884;
+  color: #fff;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.preview-send-btn:hover {
+  background: #029474;
+}
+
+.preview-send-btn:active {
+  transform: scale(0.95);
+}
 
 /* ── File Size Error Toast ── */
 .file-error-toast {

@@ -26,6 +26,7 @@ export interface AuthResponse {
   readonly token: string;
   readonly tokenType: string;        // Always "Bearer"
   readonly username: string;
+  readonly email: string;
   readonly role: 'USER' | 'ADMIN';
   readonly expiresIn: number;        // milliseconds (default: 86400000 = 24h)
 }

@@ -13,20 +13,34 @@
 
     <!-- Image attachment -->
     @if (isImage && message.attachmentUrl) {
-      <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-image-link">
+      <div class="attachment-image-container" (click)="openLightbox()">
         <img [src]="message.attachmentUrl" [alt]="'Image from ' + message.senderUsername" class="attachment-image" loading="lazy" />
-      </a>
+      </div>
+    }
+
+    <!-- Video attachment -->
+    @if (isVideo && message.attachmentUrl) {
+      <div class="attachment-video-container">
+        <video [src]="message.attachmentUrl" controls class="attachment-video" preload="metadata"></video>
+      </div>
+    }
+
+    <!-- Audio attachment -->
+    @if (isAudio && message.attachmentUrl) {
+      <div class="attachment-audio-container">
+        <audio [src]="message.attachmentUrl" controls class="attachment-audio"></audio>
+      </div>
     }
 
     <!-- File attachment -->
     @if (isFile && message.attachmentUrl) {
-      <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-file">
-        <span class="file-icon">📄</span>
+      <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-file" [download]="displayFileName">
+        <span class="file-icon">{{ fileIcon }}</span>
         <span class="file-info">
-          <span class="file-name">{{ fileName }}</span>
-          <span class="file-type">{{ message.attachmentType }}</span>
+          <span class="file-name" [title]="displayFileName">{{ displayFileName }}</span>
+          <span class="file-type">{{ message.attachmentType || 'Unknown format' }}</span>
         </span>
-        <span class="file-download-icon">⬇</span>
+        <span class="file-download-icon" title="Download">⬇</span>
       </a>
     }
 
@@ -43,20 +57,12 @@
       <span class="bubble-time">{{ formattedTime }}</span>
       <!-- Read receipt ticks (own messages only) -->
       @if (isOwn) {
-        @if (isRead) {
-          <span class="tick tick-read" title="Read">
-            <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
-              <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M6 6l3.5 3.5L16 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
-        } @else {
-          <span class="tick tick-sent" title="Sent">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
-        }
+        <span class="tick" [class.tick-read]="isRead" [class.tick-sent]="!isRead" [title]="isRead ? 'Read' : 'Sent'">
+          <svg width="18" height="12" viewBox="0 0 18 12">
+            <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6 6l3.5 3.5L16 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
       }
     </span>
 
@@ -72,3 +78,11 @@
     }
   </div>
 </div>
+
+<!-- Full-screen Image Lightbox -->
+@if (showLightbox && isImage && message.attachmentUrl) {
+  <div class="lightbox-overlay" (click)="closeLightbox()">
+    <button class="lightbox-close-btn" (click)="closeLightbox()">&times;</button>
+    <img [src]="message.attachmentUrl" class="lightbox-image" (click)="$event.stopPropagation()" />
+  </div>
+}

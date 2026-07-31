@@ -20,7 +20,7 @@ END ';
 
 DO ' BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''message_type'') THEN
-        CREATE TYPE message_type AS ENUM (''TEXT'', ''SYSTEM'', ''IMAGE'', ''FILE'');
+        CREATE TYPE message_type AS ENUM (''TEXT'', ''SYSTEM'', ''IMAGE'', ''FILE'', ''AUDIO'', ''VIDEO'');
     END IF;
 END ';
 
@@ -28,6 +28,20 @@ END ';
 DO ' BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = ''FILE'' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = ''message_type'')) THEN
         ALTER TYPE message_type ADD VALUE IF NOT EXISTS ''FILE'';
+    END IF;
+END ';
+
+-- Add AUDIO value to existing enum if it's missing
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = ''AUDIO'' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = ''message_type'')) THEN
+        ALTER TYPE message_type ADD VALUE IF NOT EXISTS ''AUDIO'';
+    END IF;
+END ';
+
+-- Add VIDEO value to existing enum if it's missing
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = ''VIDEO'' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = ''message_type'')) THEN
+        ALTER TYPE message_type ADD VALUE IF NOT EXISTS ''VIDEO'';
     END IF;
 END ';
 
@@ -78,6 +92,7 @@ CREATE TABLE IF NOT EXISTS messages (
     expires_at      TIMESTAMP WITH TIME ZONE,         -- NULL = non-ephemeral
     attachment_url  TEXT,                              -- URL/path to uploaded file
     attachment_type VARCHAR(100),                      -- MIME type (e.g. image/png, application/pdf)
+    original_name   VARCHAR(500),                      -- original human-readable filename
     pinned          BOOLEAN      NOT NULL DEFAULT FALSE,
     pinned_by       VARCHAR(50),                       -- username who pinned
     pinned_at       TIMESTAMP WITH TIME ZONE           -- when it was pinned
@@ -132,6 +147,9 @@ DO ' BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''attachment_type'') THEN
         ALTER TABLE messages ADD COLUMN attachment_type VARCHAR(100);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''original_name'') THEN
+        ALTER TABLE messages ADD COLUMN original_name VARCHAR(500);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''pinned'') THEN
         ALTER TABLE messages ADD COLUMN pinned BOOLEAN NOT NULL DEFAULT FALSE;

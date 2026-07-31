@@ -74,6 +74,10 @@ public class ChatMessage {
     @Column(name = "attachment_type", length = 100)
     private String attachmentType;
 
+    /** Original filename of the attachment (human-readable). */
+    @Column(name = "original_name", length = 500)
+    private String originalName;
+
     /** Whether this message is pinned in its conversation. */
     @Column(name = "pinned", nullable = false)
     @Builder.Default
@@ -97,6 +101,6 @@ public class ChatMessage {
     }
 
     public enum MessageType {
-        TEXT, SYSTEM, IMAGE, FILE
+        TEXT, SYSTEM, IMAGE, FILE, AUDIO, VIDEO
     }
 }

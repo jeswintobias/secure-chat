@@ -16,7 +16,7 @@ import { WebSocketService } from '../../../core/services/websocket.service';
  * - 'join': Join Group form
  * - 'created': Post-creation confirmation card with referral code
  */
-type SidebarOverlay = 'none' | 'create' | 'join' | 'created' | 'add-friend' | 'pending';
+type SidebarOverlay = 'none' | 'create' | 'join' | 'created' | 'add-friend' | 'pending' | 'more-options';
 
 /** localStorage key for pinned chat IDs. */
 const PINNED_CHATS_KEY = 'securechat_pinned_chats';
@@ -33,6 +33,10 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
   @Input() conversations: GroupResponse[] = [];
   @Input() activeConversationId = '';
   @Input() currentUsername = '';
+  /** Live username → online status map from WebSocket presence events. */
+  @Input() presenceMap = new Map<string, boolean>();
+  /** Per-conversation unread message counts for badge display. */
+  @Input() unreadCounts = new Map<string, number>();
   @Output() conversationSelected = new EventEmitter<string>();
   @Output() groupCreated = new EventEmitter<GroupResponse>();
   @Output() groupJoined = new EventEmitter<GroupResponse>();
@@ -197,6 +201,10 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
 
   // ── Overlay controls ──
 
+  openMoreOptionsDialog(): void {
+    this.overlay = 'more-options';
+  }
+
   openCreateDialog(): void {
     this.overlay = 'create';
     this.newGroupName = '';
@@ -272,6 +280,16 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  /**
+   * Returns live online status for a user.
+   * Prefers the WebSocket presence map (real-time), falls back to the REST response value.
+   */
+  isUserOnline(user: UserResponse): boolean {
+    return this.presenceMap.has(user.username)
+      ? this.presenceMap.get(user.username)!
+      : user.online;
   }
 
   // ── Pending Requests ──

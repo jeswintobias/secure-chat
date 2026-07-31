@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
@@ -39,6 +39,7 @@ export class MessageInputComponent {
   selectedFile: File | null = null;
   filePreviewUrl: string | null = null;
   isFileImage = false;
+  isFileVideo = false;
 
   /** Ephemeral message expiry */
   showExpiryMenu = false;
@@ -54,18 +55,31 @@ export class MessageInputComponent {
     { label: 'Custom…', value: -1 },
   ];
 
-  /** Max file size in bytes (10 MB to match backend). */
-  private readonly MAX_FILE_SIZE = 10 * 1024 * 1024;
+  /** Max file size in bytes (25 MB to match backend). */
+  private readonly MAX_FILE_SIZE = 25 * 1024 * 1024;
   fileSizeError = '';
 
   private typingSubject = new Subject<boolean>();
   private typingTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly cdr: ChangeDetectorRef) {
+  constructor(private readonly cdr: ChangeDetectorRef, private readonly elRef: ElementRef) {
     this.typingSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
     ).subscribe(isTyping => this.typingChanged.emit(isTyping));
+  }
+
+  /** Close expiry dropdown when clicking outside of it. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.showExpiryMenu) {
+      const expiryWrapper = this.elRef.nativeElement.querySelector('.expiry-wrapper');
+      if (expiryWrapper && !expiryWrapper.contains(event.target as Node)) {
+        this.showExpiryMenu = false;
+        this.showCustomInput = false;
+        this.cdr.markForCheck();
+      }
+    }
   }
 
   // ════════════════════════════════════════════════════════════
@@ -120,9 +134,10 @@ export class MessageInputComponent {
     this.fileSizeError = '';
     this.selectedFile = file;
     this.isFileImage = file.type.startsWith('image/');
+    this.isFileVideo = file.type.startsWith('video/');
 
-    // Generate preview URL for images
-    if (this.isFileImage) {
+    // Generate preview URL for images and videos
+    if (this.isFileImage || this.isFileVideo) {
       this.filePreviewUrl = URL.createObjectURL(file);
     } else {
       this.filePreviewUrl = null;
@@ -141,6 +156,7 @@ export class MessageInputComponent {
     this.selectedFile = null;
     this.filePreviewUrl = null;
     this.isFileImage = false;
+    this.isFileVideo = false;
     this.cdr.markForCheck();
   }
 
@@ -228,6 +244,7 @@ export class MessageInputComponent {
     this.selectedFile = null;
     this.filePreviewUrl = null;
     this.isFileImage = false;
+    this.isFileVideo = false;
     this.typingSubject.next(false);
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
   }

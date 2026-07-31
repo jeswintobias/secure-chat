@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ChangeDetectorRef, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
@@ -13,6 +13,7 @@ import { ChatHeaderComponent } from '../chat-header/chat-header.component';
 import { MessageWindowComponent } from '../message-window/message-window.component';
 import { MessageInputComponent, MessageInputPayload } from '../message-input/message-input.component';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+
 
 /**
  * Smart Container Component — orchestrates the entire chat UI.
@@ -44,13 +45,23 @@ import { EmptyStateComponent } from '../empty-state/empty-state.component';
   styleUrl: './chat-shell.component.css',
 })
 export class ChatShellComponent implements OnInit, OnDestroy {
+  @ViewChild(ChatSidebarComponent) sidebar!: ChatSidebarComponent;
+
   groups: GroupResponse[] = [];
   activeConversation: GroupResponse | null = null;
   messages: MessageResponse[] = [];
   typingUsers: string[] = [];
   pinnedMessages: MessageResponse[] = [];
   currentUsername = '';
+  currentEmail = '';
+  isProfilePopupOpen = false;
   isAdmin = false;
+
+  /** Per-conversation unread message counts for sidebar badges. */
+  unreadCounts = new Map<string, number>();
+
+  /** Live username → online status map, updated by WebSocket presence events. */
+  presenceMap = new Map<string, boolean>();
 
   /** URL security / WebSocket error toast (null = hidden). */
   wsError: string | null = null;
@@ -63,6 +74,8 @@ export class ChatShellComponent implements OnInit, OnDestroy {
   private wsErrorSub?: Subscription;
   /** Roster subscriptions — one per loaded group. */
   private rosterSubs: Subscription[] = [];
+  /** Global message subscriptions — one per conversation, for unread counting. */
+  private globalMessageSubs: Subscription[] = [];
   private wsConnectionSub?: Subscription;
   private wsPresenceSub?: Subscription;
 
@@ -73,21 +86,39 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     private readonly messageService: MessageService,
     private readonly fileUploadService: FileUploadService,
     private readonly connectionService: ConnectionService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly elRef: ElementRef,
   ) {}
+
+  /** Closes profile popup and expiry menu when clicking outside. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    // Close profile popup if clicking outside the avatar wrapper
+    if (this.isProfilePopupOpen) {
+      const avatarWrapper = this.elRef.nativeElement.querySelector('.util-avatar-wrapper');
+      if (avatarWrapper && !avatarWrapper.contains(target)) {
+        this.isProfilePopupOpen = false;
+        this.cdr.markForCheck();
+      }
+    }
+  }
 
   ngOnInit(): void {
     this.currentUsername = this.authService.getCurrentUsername();
+    this.currentEmail = this.authService.getCurrentEmail();
     this.isAdmin = this.authService.isAdmin();
 
     // Connect WebSocket
     this.wsService.connect();
 
-    // Load all conversations (GROUP + PRIVATE) and subscribe to roster events
+    // Load all conversations (GROUP + PRIVATE) and subscribe to roster + unread events
     this.subscriptions.add(
       this.groupService.getMyConversations().subscribe({
         next: (conversations) => {
           this.groups = conversations;
           this.subscribeToAllRosters();
+          this.subscribeToAllGlobalMessages();
         },
         error: (err) => console.error('Failed to load conversations:', err),
       })
@@ -140,6 +171,8 @@ export class ChatShellComponent implements OnInit, OnDestroy {
             next: (conversations) => {
               this.groups = conversations;
               this.subscribeToAllRosters();
+              this.subscribeToAllGlobalMessages();
+              this.cdr.markForCheck();
             },
             error: (err) => console.error('Failed to reload conversations after acceptance:', err),
           });
@@ -148,10 +181,12 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     });
 
     // Subscribe to presence (online/offline) events for real-time status updates.
+    // Updates the presenceMap so child components (sidebar search results, etc.)
+    // can show live online/offline status without re-querying the REST API.
     this.wsPresenceSub = this.wsService.watchPresence().subscribe({
       next: (payload: PresencePayload) => {
-        // Log for debugging; presence data can be used by sidebar/header later
-        console.debug(`[Presence] ${payload.username} is now ${payload.online ? 'ONLINE' : 'OFFLINE'}`);
+        this.presenceMap = new Map(this.presenceMap).set(payload.username, payload.online);
+        this.cdr.markForCheck();
       },
     });
   }
@@ -169,6 +204,10 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.typingUsers = [];
     this.pinnedMessages = [];
 
+    // Clear unread count for this conversation
+    this.unreadCounts = new Map(this.unreadCounts);
+    this.unreadCounts.delete(conversationId);
+
     // Unsubscribe from previous conversation's WebSocket topics
     this.wsMessageSub?.unsubscribe();
     this.wsTypingSub?.unsubscribe();
@@ -180,6 +219,15 @@ export class ChatShellComponent implements OnInit, OnDestroy {
         next: (page) => {
           // API returns newest-first; reverse for chronological display
           this.messages = [...page.content].reverse();
+          
+          // Mark all unread messages as read in bulk
+          if (this.activeConversation && this.activeConversation.id) {
+            this.messageService.markConversationAsRead(this.activeConversation.id).subscribe({
+              error: (err) => console.error('Failed to mark conversation as read:', err)
+            });
+          }
+          
+          this.cdr.markForCheck();
         },
         error: (err) => console.error('Failed to load messages:', err),
       })
@@ -199,6 +247,7 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsMessageSub = this.wsService.watchConversation(conversationId).subscribe({
       next: (message) => {
         this.messages = [...this.messages, message];
+        this.cdr.markForCheck();
         // Send read receipt for incoming messages from other users
         if (message.senderUsername !== this.currentUsername) {
           this.wsService.sendReadReceipt(conversationId, message.id);
@@ -217,6 +266,7 @@ export class ChatShellComponent implements OnInit, OnDestroy {
         } else {
           this.typingUsers = this.typingUsers.filter(u => u !== payload.username);
         }
+        this.cdr.markForCheck();
       },
     });
 
@@ -224,6 +274,7 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsReadSub = this.wsService.watchReadReceipts(conversationId).subscribe({
       next: (payload: MessageReadPayload) => {
         this.handleReadReceipt(payload);
+        this.cdr.markForCheck();
       },
     });
   }
@@ -358,6 +409,7 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsPresenceSub?.unsubscribe();
     if (this.wsErrorTimeout) clearTimeout(this.wsErrorTimeout);
     this.unsubscribeAllRosters();
+    this.unsubscribeAllGlobalMessages();
     this.wsService.disconnect();
   }
 
@@ -426,6 +478,7 @@ export class ChatShellComponent implements OnInit, OnDestroy {
           this.activeConversation =
             this.groups.find(g => g.id === payload.conversationId) ?? this.activeConversation;
         }
+        this.cdr.markForCheck();
       },
     });
     this.rosterSubs.push(sub);
@@ -439,6 +492,46 @@ export class ChatShellComponent implements OnInit, OnDestroy {
       sub.unsubscribe();
     }
     this.rosterSubs = [];
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Global message subscriptions (for unread counting)
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Subscribes to real-time messages for ALL conversations.
+   * When a message arrives for a non-active conversation, increments
+   * the unread counter for that conversation in the sidebar badge.
+   */
+  private subscribeToAllGlobalMessages(): void {
+    this.unsubscribeAllGlobalMessages();
+    for (const group of this.groups) {
+      this.subscribeToGlobalMessages(group.id);
+    }
+  }
+
+  private subscribeToGlobalMessages(conversationId: string): void {
+    const sub = this.wsService.watchConversation(conversationId).subscribe({
+      next: (message) => {
+        // Only count messages from OTHER users in NON-active conversations
+        if (
+          message.senderUsername !== this.currentUsername &&
+          this.activeConversation?.id !== conversationId
+        ) {
+          const current = this.unreadCounts.get(conversationId) ?? 0;
+          this.unreadCounts = new Map(this.unreadCounts).set(conversationId, current + 1);
+          this.cdr.markForCheck();
+        }
+      },
+    });
+    this.globalMessageSubs.push(sub);
+  }
+
+  private unsubscribeAllGlobalMessages(): void {
+    for (const sub of this.globalMessageSubs) {
+      sub.unsubscribe();
+    }
+    this.globalMessageSubs = [];
   }
 
   // ════════════════════════════════════════════════════════════
@@ -472,7 +565,9 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     if (this.wsErrorTimeout) clearTimeout(this.wsErrorTimeout);
     this.wsErrorTimeout = setTimeout(() => {
       this.wsError = null;
+      this.cdr.markForCheck();
     }, 6000);
+    this.cdr.markForCheck();
   }
 
   /** Manually dismiss the error toast. */
@@ -482,5 +577,15 @@ export class ChatShellComponent implements OnInit, OnDestroy {
       clearTimeout(this.wsErrorTimeout);
       this.wsErrorTimeout = null;
     }
+  }
+
+  /** Toggles the profile popup card above the avatar */
+  toggleProfilePopup(): void {
+    this.isProfilePopupOpen = !this.isProfilePopupOpen;
+  }
+
+  onLogout(): void {
+    this.wsService.disconnect();
+    this.authService.logout();
   }
 }

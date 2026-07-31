@@ -65,6 +65,9 @@ public class SecurityConfig {
                         // Public: authentication endpoints
                         .requestMatchers("/api/auth/**").permitAll()
 
+                        // Public: file retrieval endpoints (filenames are unguessable UUIDs)
+                        .requestMatchers("/api/upload/files/**").permitAll()
+
                         // Public: WebSocket handshake endpoint (auth happens at STOMP level)
                         .requestMatchers("/ws/**").permitAll()
 

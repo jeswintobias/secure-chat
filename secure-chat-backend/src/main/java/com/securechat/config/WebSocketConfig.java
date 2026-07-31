@@ -83,4 +83,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(webSocketAuthInterceptor);
     }
+
+    /**
+     * Configures the message converters used for STOMP WebSocket messages.
+     * Ensures Java 8 date/time types (Instant, etc.) serialize as ISO-8601 strings
+     * rather than numeric timestamps, matching the REST API behavior.
+     */
+    @Override
+    public boolean configureMessageConverters(java.util.List<org.springframework.messaging.converter.MessageConverter> messageConverters) {
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        org.springframework.messaging.converter.MappingJackson2MessageConverter converter =
+                new org.springframework.messaging.converter.MappingJackson2MessageConverter();
+        converter.setObjectMapper(objectMapper);
+        messageConverters.add(converter);
+
+        // Return false to NOT add default converters (we provide our own)
+        return false;
+    }
 }
