@@ -48,6 +48,13 @@ app:
     secret: ${JWT_SECRET:c2VjdXJlQ2hhdFN5c3RlbURldmVsb3BtZW50U2VjcmV0S2V5VGhhdElzTG9uZ0Vub3VnaEZvckhNQUNTSEEyNTY=}
     expiration-ms: 86400000  # 24 hours
 
+  # -------------------- Storage --------------------
+  storage:
+    provider: ${STORAGE_PROVIDER:local} # can be 'local' or 's3'
+  upload:
+    dir: ./uploads
+    max-size-mb: 25
+
   # -------------------- WebSocket --------------------
   # Use * in dev so any dynamically-assigned Angular port works.
   # Override via WS_ALLOWED_ORIGINS env var in production.
@@ -69,6 +76,16 @@ app:
   # Override via CORS_ALLOWED_ORIGINS env var in production.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+
+cloud:
+  aws:
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID:default}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:default}
+    region:
+      static: ${AWS_REGION:us-east-1}
+    s3:
+      bucket: ${AWS_S3_BUCKET:secure-chat-bucket}
 
 # ============================================================
 # Logging

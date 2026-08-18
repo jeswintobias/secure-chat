@@ -41,8 +41,27 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query(value = """
             SELECT * FROM users
             WHERE LOWER(username) LIKE :pattern
+              AND is_deleted = false
             ORDER BY username
             LIMIT 10
             """, nativeQuery = true)
     List<User> searchByUsernamePrefix(@Param("pattern") String pattern);
+
+    /**
+     * Finds all users who share at least one conversation with the given user.
+     *
+     * <p>Used by the {@code GET /api/users/presence} endpoint to seed the
+     * frontend presence map on initial load, so that users who were already
+     * online before the current user connected appear with the correct status.
+     *
+     * @param userId the current user's UUID
+     * @return all users who are co-members in any conversation with the given user
+     */
+    @Query("""
+            SELECT DISTINCT u FROM User u
+            JOIN u.conversations c
+            JOIN c.members m
+            WHERE m.id = :userId AND u.id <> :userId
+            """)
+    List<User> findContactsByUserId(@Param("userId") UUID userId);
 }

@@ -15,9 +15,13 @@ export class MessageWindowComponent implements AfterViewChecked {
   @Input() messages: MessageResponse[] = [];
   @Input() currentUsername = '';
   @Input() isAdmin = false;
+  @Input() readReceiptsEnabled = true;
 
   @Output() pinMessage = new EventEmitter<string>();
   @Output() unpinMessage = new EventEmitter<string>();
+  @Output() editMessage = new EventEmitter<{ messageId: string; content: string }>();
+  @Output() deleteMessage = new EventEmitter<string>();
+  @Output() reactToMessage = new EventEmitter<{ messageId: string; emoji: string }>();
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef<HTMLDivElement>;
 

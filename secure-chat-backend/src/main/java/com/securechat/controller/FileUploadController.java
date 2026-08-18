@@ -1,5 +1,7 @@
 package com.securechat.controller;
 
+import com.securechat.service.storage.FileStorageService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -7,29 +9,22 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Map;
-import java.util.UUID;
 
 /**
- * REST controller for file/image uploads.
+ * REST controller for file/image/audio uploads.
  *
- * Uploaded files are stored on the local filesystem under the configured
- * upload directory. Each file is given a UUID-based filename to avoid collisions.
- *
+ * Delegates to a FileStorageService (Local or S3).
  * The returned URL can then be referenced in a WebSocket message payload
  * as {@code attachmentUrl} when sending the message.
  */
 @RestController
 @RequestMapping("/api/upload")
+@RequiredArgsConstructor
 @Slf4j
 public class FileUploadController {
 
-    @Value("${app.upload.dir:./uploads}")
-    private String uploadDir;
+    private final FileStorageService fileStorageService;
 
     @Value("${app.upload.max-size-mb:25}")
     private int maxSizeMb;
@@ -41,7 +36,7 @@ public class FileUploadController {
      * @return JSON with the file URL and content type
      */
     @PostMapping
-    public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
         }
@@ -50,32 +45,24 @@ public class FileUploadController {
             return ResponseEntity.badRequest().body(Map.of("error", "File exceeds maximum size of " + maxSizeMb + "MB"));
         }
 
-        // Ensure upload directory exists
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath);
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
 
-        // Generate unique filename preserving extension
-        String originalFilename = file.getOriginalFilename();
-        String extension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            String fileUrl = fileStorageService.uploadFile(file, originalFilename, extension);
+
+            return ResponseEntity.ok(Map.of(
+                    "url", fileUrl,
+                    "contentType", file.getContentType() != null ? file.getContentType() : "application/octet-stream",
+                    "originalName", originalFilename != null ? originalFilename : "uploaded_file"
+            ));
+        } catch (IOException e) {
+            log.error("Failed to upload file", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to upload file"));
         }
-        String storedFilename = UUID.randomUUID() + extension;
-
-        // Store the file
-        Path targetPath = uploadPath.resolve(storedFilename);
-        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-
-        log.info("File uploaded: {} -> {} ({})", originalFilename, storedFilename, file.getContentType());
-
-        // Return the URL that the frontend can use to reference this file
-        String fileUrl = "/api/upload/files/" + storedFilename;
-
-        return ResponseEntity.ok(Map.of(
-                "url", fileUrl,
-                "contentType", file.getContentType() != null ? file.getContentType() : "application/octet-stream",
-                "originalName", originalFilename != null ? originalFilename : storedFilename
-        ));
     }
 
     /**
@@ -85,25 +72,35 @@ public class FileUploadController {
      * @return the file bytes with appropriate content type
      */
     @GetMapping("/files/{filename:.+}")
-    public ResponseEntity<byte[]> getFile(@PathVariable String filename) throws IOException {
-        Path filePath = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(filename);
-
-        if (!Files.exists(filePath)) {
+    public ResponseEntity<byte[]> getFile(@PathVariable String filename) {
+        if (!fileStorageService.fileExists(filename)) {
             return ResponseEntity.notFound().build();
         }
 
-        byte[] fileBytes = Files.readAllBytes(filePath);
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) {
-            contentType = "application/octet-stream";
+        try {
+            byte[] fileBytes = fileStorageService.getFile(filename);
+            
+            // Determine content type based on extension
+            String contentType = "application/octet-stream";
+            if (filename.endsWith(".png")) contentType = "image/png";
+            else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) contentType = "image/jpeg";
+            else if (filename.endsWith(".webp")) contentType = "image/webp";
+            else if (filename.endsWith(".mp4")) contentType = "video/mp4";
+            else if (filename.endsWith(".webm")) contentType = "audio/webm";
+            else if (filename.endsWith(".ogg")) contentType = "audio/ogg";
+            else if (filename.endsWith(".mp3")) contentType = "audio/mpeg";
+            else if (filename.endsWith(".pdf")) contentType = "application/pdf";
+
+            String disposition = (contentType.startsWith("image/") || contentType.startsWith("video/") || contentType.startsWith("audio/") || contentType.equals("application/pdf")) 
+                    ? "inline" : "attachment";
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", contentType)
+                    .header("Content-Disposition", disposition + "; filename=\"" + filename + "\"")
+                    .body(fileBytes);
+        } catch (IOException e) {
+            log.error("Failed to retrieve file", e);
+            return ResponseEntity.internalServerError().build();
         }
-
-        String disposition = (contentType.startsWith("image/") || contentType.startsWith("video/") || contentType.startsWith("audio/") || contentType.equals("application/pdf")) 
-                ? "inline" : "attachment";
-
-        return ResponseEntity.ok()
-                .header("Content-Type", contentType)
-                .header("Content-Disposition", disposition + "; filename=\"" + filename + "\"")
-                .body(fileBytes);
     }
 }

@@ -91,6 +91,38 @@ public class ChatMessage {
     @Column(name = "pinned_at")
     private Instant pinnedAt;
 
+    /** Whether this message's content is client-side encrypted (E2EE). */
+    @Column(name = "encrypted", nullable = false)
+    @Builder.Default
+    private boolean encrypted = false;
+
+    /** Base64-encoded AES-GCM initialization vector. Required when encrypted=true. */
+    @Column(name = "iv")
+    private String iv;
+
+    /** Whether this message has been edited after sending. */
+    @Column(name = "edited", nullable = false)
+    @Builder.Default
+    private boolean edited = false;
+
+    /** Timestamp of the most recent edit. NULL if never edited. */
+    @Column(name = "edited_at")
+    private Instant editedAt;
+
+    /** Whether this message has been deleted (soft delete for everyone). */
+    @Column(name = "deleted", nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
+
+    /** Timestamp of deletion. */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    /** Username of the user who deleted this message. */
+    @Column(name = "deleted_by", length = 50)
+    private String deletedBy;
+
+
     /**
      * Checks whether this message has passed its expiration time.
      *

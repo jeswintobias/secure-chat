@@ -104,8 +104,88 @@ export class MessageInputComponent {
   }
 
   // ════════════════════════════════════════════════════════════
-  // File Attachment
+  // File Attachment & Voice Recording
   // ════════════════════════════════════════════════════════════
+
+  // Audio Recording State
+  isRecording = false;
+  recordingDuration = 0;
+  private mediaRecorder: MediaRecorder | null = null;
+  private audioChunks: Blob[] = [];
+  private recordingInterval: ReturnType<typeof setInterval> | null = null;
+
+  async startRecording(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.audioChunks = [];
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `VoiceMessage_${new Date().getTime()}.webm`, { type: 'audio/webm' });
+        
+        // Auto-send the voice message immediately
+        this.selectedFile = audioFile;
+        this.send();
+        
+        this.stopMediaStream();
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording = true;
+      this.recordingDuration = 0;
+      this.recordingInterval = setInterval(() => {
+        this.recordingDuration++;
+        this.cdr.markForCheck();
+      }, 1000);
+      this.cdr.markForCheck();
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      alert('Microphone access is required to record voice messages.');
+    }
+  }
+
+  stopRecording(): void {
+    if (this.mediaRecorder && this.isRecording) {
+      this.mediaRecorder.stop();
+      this.isRecording = false;
+      if (this.recordingInterval) {
+        clearInterval(this.recordingInterval);
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  cancelRecording(): void {
+    if (this.mediaRecorder && this.isRecording) {
+      // Prevent the onstop handler from firing and auto-sending
+      this.mediaRecorder.onstop = () => this.stopMediaStream(); 
+      this.mediaRecorder.stop();
+      this.isRecording = false;
+      if (this.recordingInterval) {
+        clearInterval(this.recordingInterval);
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  private stopMediaStream(): void {
+    if (this.mediaRecorder && this.mediaRecorder.stream) {
+      this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+  }
+
+  get formattedRecordingDuration(): string {
+    const mins = Math.floor(this.recordingDuration / 60);
+    const secs = this.recordingDuration % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
 
   /** Opens the native file picker dialog. */
   openFilePicker(): void {

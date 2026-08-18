@@ -55,6 +55,30 @@ public class MessageResponse {
     /** Timestamp when this message was pinned. */
     private Instant pinnedAt;
 
+    /** Whether this message's content is client-side encrypted (E2EE). */
+    private boolean encrypted;
+
+    /** Base64-encoded AES-GCM initialization vector. Null for non-encrypted messages. */
+    private String iv;
+
     /** List of read receipts for this message. */
     private List<MessageReadDto> readReceipts;
+
+    /** Whether this message has been edited after sending. */
+    private boolean edited;
+
+    /** Timestamp of the most recent edit. Null if never edited. */
+    private Instant editedAt;
+
+    /** Whether this message has been deleted for everyone (soft delete). */
+    private boolean deleted;
+
+    /** Timestamp of deletion. Null if not deleted. */
+    private Instant deletedAt;
+
+    /** Username of the user who deleted this message. */
+    private String deletedBy;
+
+    /** Aggregated emoji reactions for this message. */
+    private List<ReactionSummary> reactions;
 }

@@ -23,4 +23,7 @@ public class PresencePayload {
 
     /** True if the user just came online, false if they went offline. */
     private boolean online;
+
+    /** Timestamp of when the user went offline (null if online). */
+    private java.time.Instant lastSeen;
 }

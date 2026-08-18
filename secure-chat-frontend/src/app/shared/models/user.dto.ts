@@ -9,5 +9,9 @@ export interface UserResponse {
   readonly username: string;
   readonly role: 'USER' | 'ADMIN';
   readonly online: boolean;
+  readonly lastSeen?: string;
+  readonly lastSeenPrivacy?: 'EVERYONE' | 'CONTACTS' | 'NOBODY';
+  readonly readReceiptsEnabled?: boolean;
+  readonly isDeleted: boolean;
   readonly createdAt: string;       // ISO-8601 Instant
 }

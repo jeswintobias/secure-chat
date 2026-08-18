@@ -13,6 +13,12 @@ DO ' BEGIN
 END ';
 
 DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''privacy_setting'') THEN
+        CREATE TYPE privacy_setting AS ENUM (''EVERYONE'', ''CONTACTS'', ''NOBODY'');
+    END IF;
+END ';
+
+DO ' BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''conversation_type'') THEN
         CREATE TYPE conversation_type AS ENUM (''PRIVATE'', ''GROUP'');
     END IF;
@@ -53,6 +59,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash   VARCHAR(255) NOT NULL,
     role            user_role    NOT NULL DEFAULT 'USER',
     online_status   BOOLEAN      NOT NULL DEFAULT FALSE,
+    last_seen       TIMESTAMP WITH TIME ZONE,
+    last_seen_privacy privacy_setting NOT NULL DEFAULT 'EVERYONE',
+    read_receipts   BOOLEAN      NOT NULL DEFAULT TRUE,
+    is_deleted      BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
@@ -140,6 +150,22 @@ CREATE TABLE IF NOT EXISTS connection_requests (
 -- Schema migrations for existing databases
 -- ============================================================
 
+-- Add privacy and delete columns if they don't exist
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''last_seen'') THEN
+        ALTER TABLE users ADD COLUMN last_seen TIMESTAMP WITH TIME ZONE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''last_seen_privacy'') THEN
+        ALTER TABLE users ADD COLUMN last_seen_privacy privacy_setting NOT NULL DEFAULT ''EVERYONE'';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''read_receipts'') THEN
+        ALTER TABLE users ADD COLUMN read_receipts BOOLEAN NOT NULL DEFAULT TRUE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''is_deleted'') THEN
+        ALTER TABLE users ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+END ';
+
 -- Add attachment columns if they don't exist
 DO ' BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''attachment_url'') THEN
@@ -210,3 +236,127 @@ CREATE INDEX IF NOT EXISTS idx_connection_requests_receiver_status
 -- Connection requests: fast lookup of sent requests by sender
 CREATE INDEX IF NOT EXISTS idx_connection_requests_sender
     ON connection_requests (sender_id);
+
+-- ============================================================
+-- E2EE (End-to-End Encryption) Tables
+-- ============================================================
+
+-- -------------------- User Key Bundles --------------------
+-- Stores each user's ECDH public key (private key never leaves the client).
+CREATE TABLE IF NOT EXISTS user_key_bundles (
+    user_id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    public_key      TEXT NOT NULL,                              -- Base64-encoded ECDH P-256 public key (JWK format)
+    key_algorithm   VARCHAR(50) NOT NULL DEFAULT 'ECDH-P256',
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- -------------------- Conversation Key Bundles --------------------
+-- Per-member encrypted copy of the group AES-256-GCM symmetric key.
+-- For PRIVATE chats this table is unused (keys are derived via ECDH).
+CREATE TABLE IF NOT EXISTS conversation_key_bundles (
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id)         ON DELETE CASCADE,
+    encrypted_key   TEXT NOT NULL,                              -- Base64-encoded AES key, wrapped with user's public key
+    key_version     INTEGER NOT NULL DEFAULT 1,
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (conversation_id, user_id)
+);
+
+-- ============================================================
+-- E2EE Schema migrations for existing databases
+-- ============================================================
+
+-- Add E2EE columns to messages table if they don't exist
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''encrypted'') THEN
+        ALTER TABLE messages ADD COLUMN encrypted BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''iv'') THEN
+        ALTER TABLE messages ADD COLUMN iv TEXT;
+    END IF;
+END ';
+
+-- ============================================================
+-- Message Edit & Delete Schema migrations
+-- ============================================================
+
+-- Add edit tracking columns to messages
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''edited'') THEN
+        ALTER TABLE messages ADD COLUMN edited BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''edited_at'') THEN
+        ALTER TABLE messages ADD COLUMN edited_at TIMESTAMP WITH TIME ZONE;
+    END IF;
+END ';
+
+-- Add soft-delete columns to messages
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''deleted'') THEN
+        ALTER TABLE messages ADD COLUMN deleted BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''deleted_at'') THEN
+        ALTER TABLE messages ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''messages'' AND column_name = ''deleted_by'') THEN
+        ALTER TABLE messages ADD COLUMN deleted_by VARCHAR(50);
+    END IF;
+END ';
+
+-- -------------------- User Deleted Messages ("Delete for Me") --------------------
+-- Tracks which messages each user has individually hidden from their view.
+-- The message is NOT deleted for other participants.
+CREATE TABLE IF NOT EXISTS user_deleted_messages (
+    user_id     UUID NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+    message_id  UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    deleted_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (user_id, message_id)
+);
+
+-- -------------------- Message Reactions --------------------
+-- Stores individual emoji reactions on messages.
+-- Each user can react with a specific emoji only once per message (toggle on/off).
+CREATE TABLE IF NOT EXISTS message_reactions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id  UUID         NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    user_id     UUID         NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+    emoji       VARCHAR(20)  NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uq_message_reactions_message_user_emoji UNIQUE (message_id, user_id, emoji)
+);
+
+-- ============================================================
+-- E2EE Performance Indexes
+-- ============================================================
+
+-- Fast key bundle lookup by user
+CREATE INDEX IF NOT EXISTS idx_user_key_bundles_user
+    ON user_key_bundles (user_id);
+
+-- Fast key bundle lookup per conversation
+CREATE INDEX IF NOT EXISTS idx_conversation_key_bundles_conversation
+    ON conversation_key_bundles (conversation_id);
+
+-- Fast lookup of a specific user's key bundle in a conversation
+CREATE INDEX IF NOT EXISTS idx_conversation_key_bundles_user
+    ON conversation_key_bundles (user_id);
+
+-- ============================================================
+-- Message Edit, Delete & Reaction Indexes
+-- ============================================================
+
+-- Fast "delete for me" lookup per user
+CREATE INDEX IF NOT EXISTS idx_user_deleted_messages_user
+    ON user_deleted_messages (user_id);
+
+-- Fast reaction lookup per message
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message
+    ON message_reactions (message_id);
+
+-- Fast reaction lookup per user (for "my reactions" queries)
+CREATE INDEX IF NOT EXISTS idx_message_reactions_user
+    ON message_reactions (user_id);

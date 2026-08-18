@@ -5,7 +5,13 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 import { MessageResponse } from '../../shared/models/message.dto';
 import { TypingIndicatorPayload } from '../../shared/models/typing.dto';
-import { WebSocketMessagePayload, MessageReadPayload } from '../../shared/models/message.dto';
+import {
+  WebSocketMessagePayload,
+  MessageReadPayload,
+  MessageEditPayload,
+  MessageDeletePayload,
+  ReactionResponse,
+} from '../../shared/models/message.dto';
 import { RosterUpdatePayload } from '../../shared/models/roster.dto';
 import { WebSocketErrorPayload } from '../../shared/models/websocket-error.dto';
 import { ConnectionRequestResponse } from '../../shared/models/connection.dto';
@@ -235,6 +241,80 @@ export class WebSocketService implements OnDestroy {
     return this.rxStomp
       .watch('/topic/presence')
       .pipe(map(message => JSON.parse(message.body) as PresencePayload));
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Message Edit / Delete / Reaction — WebSocket methods
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Subscribes to message edit events for a specific conversation.
+   *
+   * STOMP destination: /topic/conversation/{conversationId}/edit
+   */
+  watchEdits(conversationId: string): Observable<MessageResponse> {
+    return this.rxStomp
+      .watch(`/topic/conversation/${conversationId}/edit`)
+      .pipe(map(message => JSON.parse(message.body) as MessageResponse));
+  }
+
+  /**
+   * Subscribes to message delete events for a specific conversation.
+   *
+   * STOMP destination: /topic/conversation/{conversationId}/delete
+   */
+  watchDeletes(conversationId: string): Observable<MessageResponse> {
+    return this.rxStomp
+      .watch(`/topic/conversation/${conversationId}/delete`)
+      .pipe(map(message => JSON.parse(message.body) as MessageResponse));
+  }
+
+  /**
+   * Subscribes to reaction events for a specific conversation.
+   *
+   * STOMP destination: /topic/conversation/{conversationId}/reaction
+   */
+  watchReactions(conversationId: string): Observable<ReactionResponse> {
+    return this.rxStomp
+      .watch(`/topic/conversation/${conversationId}/reaction`)
+      .pipe(map(message => JSON.parse(message.body) as ReactionResponse));
+  }
+
+  /**
+   * Sends a message edit over STOMP.
+   *
+   * STOMP destination: /app/chat.edit/{conversationId}
+   */
+  sendEdit(conversationId: string, payload: MessageEditPayload): void {
+    this.rxStomp.publish({
+      destination: `/app/chat.edit/${conversationId}`,
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /**
+   * Sends a message delete over STOMP.
+   *
+   * STOMP destination: /app/chat.delete/{conversationId}
+   */
+  sendDelete(conversationId: string, payload: MessageDeletePayload): void {
+    this.rxStomp.publish({
+      destination: `/app/chat.delete/${conversationId}`,
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /**
+   * Sends a reaction toggle over STOMP.
+   *
+   * STOMP destination: /app/chat.react/{conversationId}
+   */
+  sendReaction(conversationId: string, messageId: string, emoji: string): void {
+    const payload = { messageId, emoji };
+    this.rxStomp.publish({
+      destination: `/app/chat.react/${conversationId}`,
+      body: JSON.stringify(payload),
+    });
   }
 
   /**

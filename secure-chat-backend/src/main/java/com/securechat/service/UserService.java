@@ -40,6 +40,10 @@ public class UserService implements UserDetailsService {
                         new UsernameNotFoundException("User not found: " + username)
                 );
 
+        if (user.isDeleted()) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        }
+
         // Map our Role enum to Spring Security GrantedAuthority
         // Convention: ROLE_ prefix for role-based access control
         return new org.springframework.security.core.userdetails.User(

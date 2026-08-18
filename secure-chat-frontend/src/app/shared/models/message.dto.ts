@@ -4,8 +4,13 @@
  * Backend sources:
  *   - com.securechat.dto.response.MessageResponse
  *   - com.securechat.dto.response.MessageReadDto
+ *   - com.securechat.dto.response.ReactionSummary
+ *   - com.securechat.dto.response.ReactionResponse
  *   - com.securechat.dto.websocket.WebSocketMessagePayload
  *   - com.securechat.dto.websocket.MessageReadPayload
+ *   - com.securechat.dto.websocket.MessageEditPayload
+ *   - com.securechat.dto.websocket.MessageDeletePayload
+ *   - com.securechat.dto.websocket.ReactionPayload
  *   - FileUploadController response Map<String, String>
  */
 
@@ -21,6 +26,31 @@ export interface MessageReadDto {
   readonly userId: string;             // UUID
   readonly username: string;
   readonly readAt: string;             // ISO-8601 Instant
+}
+
+/**
+ * Maps to: com.securechat.dto.response.ReactionSummary
+ *
+ * Aggregated emoji reaction on a message — groups all users
+ * who reacted with the same emoji.
+ */
+export interface ReactionSummary {
+  readonly emoji: string;
+  readonly count: number;
+  readonly usernames: readonly string[];
+}
+
+/**
+ * Maps to: com.securechat.dto.response.ReactionResponse
+ *
+ * Broadcast when a user adds or removes a reaction.
+ */
+export interface ReactionResponse {
+  readonly messageId: string;          // UUID
+  readonly username: string;
+  readonly userId: string;             // UUID
+  readonly emoji: string;
+  readonly action: 'ADDED' | 'REMOVED';
 }
 
 /**
@@ -57,8 +87,32 @@ export interface MessageResponse {
   /** Timestamp when this message was pinned. */
   readonly pinnedAt: string | null;        // ISO-8601 Instant
 
+  /** Whether this message's content is client-side encrypted (E2EE). */
+  readonly encrypted: boolean;
+
+  /** Base64-encoded AES-GCM initialization vector. Null for non-encrypted messages. */
+  readonly iv: string | null;
+
   /** List of read receipts for this message. */
   readonly readReceipts: readonly MessageReadDto[];
+
+  /** Whether this message has been edited after sending. */
+  readonly edited: boolean;
+
+  /** Timestamp of the most recent edit. Null if never edited. */
+  readonly editedAt: string | null;        // ISO-8601 Instant
+
+  /** Whether this message has been deleted for everyone (soft delete). */
+  readonly deleted: boolean;
+
+  /** Timestamp of deletion. Null if not deleted. */
+  readonly deletedAt: string | null;       // ISO-8601 Instant
+
+  /** Username of the user who deleted this message. */
+  readonly deletedBy: string | null;
+
+  /** Aggregated emoji reactions for this message. */
+  readonly reactions: readonly ReactionSummary[];
 }
 
 /**
@@ -79,6 +133,44 @@ export interface WebSocketMessagePayload {
 
   /** Original filename of the attachment. */
   readonly originalName?: string | null;
+
+  /** Whether the content is client-side encrypted (E2EE). */
+  readonly encrypted?: boolean;
+
+  /** Base64-encoded AES-GCM initialization vector. Required when encrypted=true. */
+  readonly iv?: string | null;
+}
+
+/**
+ * Maps to: com.securechat.dto.websocket.MessageEditPayload
+ *
+ * Sent by clients to /app/chat.edit/{conversationId} to edit a message.
+ */
+export interface MessageEditPayload {
+  readonly messageId: string;              // UUID
+  readonly content: string;
+  readonly encrypted?: boolean;
+  readonly iv?: string | null;
+}
+
+/**
+ * Maps to: com.securechat.dto.websocket.MessageDeletePayload
+ *
+ * Sent by clients to /app/chat.delete/{conversationId} to delete a message.
+ */
+export interface MessageDeletePayload {
+  readonly messageId: string;              // UUID
+  readonly mode: 'EVERYONE' | 'ME';
+}
+
+/**
+ * Maps to: com.securechat.dto.websocket.ReactionPayload
+ *
+ * Sent by clients to /app/chat.react/{conversationId} to toggle a reaction.
+ */
+export interface ReactionPayload {
+  readonly messageId: string;              // UUID
+  readonly emoji: string;
 }
 
 /**
@@ -120,3 +212,4 @@ export interface Page<T> {
   readonly last: boolean;
   readonly empty: boolean;
 }
+

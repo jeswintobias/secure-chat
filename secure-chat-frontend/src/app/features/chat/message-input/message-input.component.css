@@ -262,3 +262,73 @@
   transition: color var(--transition-fast);
 }
 .expiry-clear-btn:hover { color: var(--color-danger); }
+
+/* =========================================
+   Recording UI Overlay
+   ========================================= */
+
+.recording-ui {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  animation: slideIn 0.2s ease-out;
+  border: 1px solid var(--border-input);
+  min-height: 42px;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #ef4444; /* Red color for recording */
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.recording-time {
+  font-family: monospace;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.recording-cancel-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s;
+}
+
+.recording-cancel-btn:hover {
+  color: #ef4444;
+}
+
+.recording-send-btn {
+  background-color: #ef4444 !important;
+  color: white !important;
+}
+.recording-send-btn:hover {
+  background-color: #dc2626 !important;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}

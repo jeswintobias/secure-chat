@@ -28,5 +28,13 @@ public class UserResponse {
 
     private boolean online;
 
+    private Instant lastSeen;
+
+    private String lastSeenPrivacy;
+
+    private Boolean readReceiptsEnabled;
+
+    private boolean isDeleted;
+
     private Instant createdAt;
 }

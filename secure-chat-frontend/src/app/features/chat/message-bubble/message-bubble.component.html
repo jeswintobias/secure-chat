@@ -1,8 +1,9 @@
 <div class="bubble-row" [class.own]="isOwn" [class.other]="!isOwn">
-  <div class="bubble" [class.bubble-own]="isOwn" [class.bubble-other]="!isOwn" [class.bubble-pinned]="message.pinned">
+  <div class="bubble" [class.bubble-own]="isOwn" [class.bubble-other]="!isOwn"
+       [class.bubble-pinned]="message.pinned" [class.bubble-deleted]="message.deleted">
 
     <!-- Pinned indicator -->
-    @if (message.pinned) {
+    @if (message.pinned && !message.deleted) {
       <span class="pin-badge" title="Pinned by {{ message.pinnedBy }}">📌</span>
     }
 
@@ -11,70 +12,148 @@
       <span class="sender-name">{{ message.senderUsername }}</span>
     }
 
-    <!-- Image attachment -->
-    @if (isImage && message.attachmentUrl) {
-      <div class="attachment-image-container" (click)="openLightbox()">
-        <img [src]="message.attachmentUrl" [alt]="'Image from ' + message.senderUsername" class="attachment-image" loading="lazy" />
-      </div>
-    }
-
-    <!-- Video attachment -->
-    @if (isVideo && message.attachmentUrl) {
-      <div class="attachment-video-container">
-        <video [src]="message.attachmentUrl" controls class="attachment-video" preload="metadata"></video>
-      </div>
-    }
-
-    <!-- Audio attachment -->
-    @if (isAudio && message.attachmentUrl) {
-      <div class="attachment-audio-container">
-        <audio [src]="message.attachmentUrl" controls class="attachment-audio"></audio>
-      </div>
-    }
-
-    <!-- File attachment -->
-    @if (isFile && message.attachmentUrl) {
-      <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-file" [download]="displayFileName">
-        <span class="file-icon">{{ fileIcon }}</span>
-        <span class="file-info">
-          <span class="file-name" [title]="displayFileName">{{ displayFileName }}</span>
-          <span class="file-type">{{ message.attachmentType || 'Unknown format' }}</span>
-        </span>
-        <span class="file-download-icon" title="Download">⬇</span>
-      </a>
-    }
-
-    <!-- Text content -->
-    @if (message.content) {
-      <span class="bubble-content">{{ message.content }}</span>
-    }
-
-    <!-- Meta: ephemeral icon + time + read ticks -->
-    <span class="bubble-meta">
-      @if (isEphemeral) {
-        <span class="ephemeral-icon" title="Disappearing message">⏳</span>
-      }
-      <span class="bubble-time">{{ formattedTime }}</span>
-      <!-- Read receipt ticks (own messages only) -->
-      @if (isOwn) {
-        <span class="tick" [class.tick-read]="isRead" [class.tick-sent]="!isRead" [title]="isRead ? 'Read' : 'Sent'">
-          <svg width="18" height="12" viewBox="0 0 18 12">
-            <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M6 6l3.5 3.5L16 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </span>
-      }
-    </span>
-
-    <!-- Admin hover actions -->
-    @if (isAdmin) {
-      <div class="bubble-actions">
-        @if (message.pinned) {
-          <button class="action-btn" (click)="onUnpin()" title="Unpin message">Unpin</button>
+    <!-- ════════ DELETED MESSAGE ════════ -->
+    @if (message.deleted) {
+      <span class="deleted-content">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="deleted-icon">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        @if (isOwn) {
+          You deleted this message
         } @else {
-          <button class="action-btn" (click)="onPin()" title="Pin message">📌 Pin</button>
+          This message was deleted
         }
-      </div>
+      </span>
+    } @else {
+
+      <!-- ════════ EDIT MODE ════════ -->
+      @if (isEditing) {
+        <div class="edit-mode">
+          <textarea class="edit-input"
+            [(ngModel)]="editContent"
+            (keydown)="onEditKeydown($event)"
+            rows="2"
+            autofocus
+          ></textarea>
+          <div class="edit-actions">
+            <button class="edit-btn edit-cancel" (click)="cancelEdit()">Cancel</button>
+            <button class="edit-btn edit-save" (click)="saveEdit()">Save</button>
+          </div>
+        </div>
+      } @else {
+
+        <!-- Image attachment -->
+        @if (isImage && message.attachmentUrl) {
+          <div class="attachment-image-container" (click)="openLightbox()">
+            <img [src]="message.attachmentUrl" [alt]="'Image from ' + message.senderUsername" class="attachment-image" loading="lazy" />
+          </div>
+        }
+
+        <!-- Video attachment -->
+        @if (isVideo && message.attachmentUrl) {
+          <div class="attachment-video-container">
+            <video [src]="message.attachmentUrl" controls class="attachment-video" preload="metadata"></video>
+          </div>
+        }
+
+        <!-- Audio attachment -->
+        @if (isAudio && message.attachmentUrl) {
+          <div class="attachment-audio-container">
+            <audio [src]="message.attachmentUrl" controls class="attachment-audio"></audio>
+          </div>
+        }
+
+        <!-- File attachment -->
+        @if (isFile && message.attachmentUrl) {
+          <a [href]="message.attachmentUrl" target="_blank" rel="noopener" class="attachment-file" [download]="displayFileName">
+            <span class="file-icon">{{ fileIcon }}</span>
+            <span class="file-info">
+              <span class="file-name" [title]="displayFileName">{{ displayFileName }}</span>
+              <span class="file-type">{{ message.attachmentType || 'Unknown format' }}</span>
+            </span>
+            <span class="file-download-icon" title="Download">⬇</span>
+          </a>
+        }
+
+        <!-- Text content -->
+        @if (message.content) {
+          <span class="bubble-content">{{ message.content }}</span>
+        }
+
+        <!-- Meta: encryption badge + edited label + ephemeral icon + time + read ticks -->
+        <span class="bubble-meta">
+          @if (message.encrypted) {
+            <span class="e2ee-icon" title="End-to-end encrypted">🔒</span>
+          }
+          @if (message.edited) {
+            <span class="edited-label" title="Edited">edited</span>
+          }
+          @if (isEphemeral) {
+            <span class="ephemeral-icon" title="Disappearing message">⏳</span>
+          }
+          <span class="bubble-time">{{ formattedTime }}</span>
+          <!-- Read receipt ticks (own messages only) -->
+          @if (isOwn) {
+            <span class="tick" [class.tick-read]="isRead" [class.tick-sent]="!isRead" [title]="isRead ? 'Read' : 'Sent'">
+              <svg width="18" height="12" viewBox="0 0 18 12">
+                <path d="M1 6l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 6l3.5 3.5L16 3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          }
+        </span>
+
+        <!-- ════════ REACTIONS DISPLAY ════════ -->
+        @if (message.reactions && message.reactions.length > 0) {
+          <div class="reactions-row">
+            @for (reaction of message.reactions; track reaction.emoji) {
+              <button class="reaction-chip"
+                [class.reaction-own]="hasReacted(reaction)"
+                [title]="reaction.usernames.join(', ')"
+                (click)="onReact(reaction.emoji)">
+                <span class="reaction-emoji">{{ reaction.emoji }}</span>
+                <span class="reaction-count">{{ reaction.count }}</span>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- ════════ HOVER ACTIONS (edit, delete, react, pin) ════════ -->
+        <div class="bubble-actions">
+          <!-- Reaction button (always) -->
+          <button class="action-btn action-react" (click)="toggleReactionBar()" title="React">😊</button>
+
+          <!-- Edit (own messages only, text messages only) -->
+          @if (isOwn && message.messageType === 'TEXT') {
+            <button class="action-btn" (click)="enterEditMode()" title="Edit message">✏️</button>
+          }
+
+          <!-- Delete (own messages only) -->
+          @if (isOwn) {
+            <button class="action-btn action-delete" (click)="onDelete()" title="Delete message">🗑️</button>
+          }
+
+          <!-- Pin/Unpin (admin only) -->
+          @if (isAdmin) {
+            @if (message.pinned) {
+              <button class="action-btn" (click)="onUnpin()" title="Unpin message">Unpin</button>
+            } @else {
+              <button class="action-btn" (click)="onPin()" title="Pin message">📌</button>
+            }
+          }
+        </div>
+
+        <!-- ════════ QUICK REACTION BAR (popup) ════════ -->
+        @if (showReactionBar) {
+          <div class="reaction-bar">
+            @for (emoji of quickReactions; track emoji) {
+              <button class="reaction-bar-btn" (click)="onReact(emoji)" [title]="emoji">
+                {{ emoji }}
+              </button>
+            }
+          </div>
+        }
+      }
     }
   </div>
 </div>

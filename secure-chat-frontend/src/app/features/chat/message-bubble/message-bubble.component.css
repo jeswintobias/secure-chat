@@ -27,6 +27,7 @@
 }
 .bubble-time { font-size: 11px; color: rgba(255,255,255,0.55); }
 .ephemeral-icon { font-size: 11px; opacity: 0.7; }
+.e2ee-icon { font-size: 10px; opacity: 0.65; }
 
 /* ── Pinned Message Indicator ── */
 .bubble-pinned {
@@ -51,7 +52,7 @@
 
 /* ── Attachments ── */
 .attachment-image-container {
-  margin: 4px -4px 6px -4px; /* break out of padding slightly */
+  margin: 4px -4px 6px -4px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   cursor: pointer;
@@ -206,23 +207,185 @@
   to { opacity: 1; }
 }
 
-/* ── Admin Hover Actions ── */
+/* ── Hover Actions Menu ── */
 .bubble-actions {
-  position: absolute; top: -8px; right: 4px;
+  position: absolute; top: -10px; right: 4px;
   opacity: 0; pointer-events: none;
   transition: opacity var(--transition-fast);
+  display: flex; gap: 2px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: 2px 3px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
+  z-index: 10;
 }
 .bubble:hover .bubble-actions {
   opacity: 1; pointer-events: auto;
 }
 .action-btn {
-  padding: 3px 8px; font-size: 11px; font-weight: 500;
-  background: var(--bg-tertiary); border-radius: var(--radius-xs);
+  padding: 2px 6px; font-size: 13px;
+  background: transparent; border-radius: var(--radius-xs);
   color: var(--text-primary); cursor: pointer;
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm);
+  border: none;
   transition: background var(--transition-fast);
+  line-height: 1.4;
 }
 .action-btn:hover {
   background: var(--bg-active);
+}
+.action-delete:hover {
+  background: rgba(239, 83, 80, 0.2);
+}
+
+/* ── Deleted Message State ── */
+.bubble-deleted {
+  opacity: 0.7;
+}
+.deleted-content {
+  font-size: 13.5px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.deleted-icon {
+  opacity: 0.5;
+}
+
+/* ── Edited Label ── */
+.edited-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  font-style: italic;
+}
+
+/* ── Edit Mode ── */
+.edit-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+.edit-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-xs);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 6px 8px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+  outline: none;
+}
+.edit-input:focus {
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 0 2px rgba(0, 128, 105, 0.2);
+}
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.edit-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+.edit-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.edit-cancel:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+.edit-save {
+  background: var(--accent-primary);
+  color: #fff;
+}
+.edit-save:hover {
+  background: var(--accent-hover);
+}
+
+/* ── Reactions Display ── */
+.reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  clear: both;
+}
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+.reaction-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.reaction-own {
+  background: rgba(0, 128, 105, 0.2);
+  border-color: var(--accent-primary);
+}
+.reaction-own:hover {
+  background: rgba(0, 128, 105, 0.3);
+}
+.reaction-emoji {
+  font-size: 15px;
+  line-height: 1;
+}
+.reaction-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+/* ── Quick Reaction Bar (popup) ── */
+.reaction-bar {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border-radius: 24px;
+  padding: 4px 6px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-subtle);
+  z-index: 20;
+  animation: fadeIn 0.15s ease-out;
+}
+.reaction-bar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.15s ease;
+}
+.reaction-bar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.25);
 }

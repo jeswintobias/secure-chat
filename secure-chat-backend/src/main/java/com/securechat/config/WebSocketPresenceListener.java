@@ -65,11 +65,15 @@ public class WebSocketPresenceListener {
     private void updateOnlineStatus(String username, boolean online) {
         userRepository.findByUsername(username).ifPresent(user -> {
             user.setOnlineStatus(online);
+            if (!online) {
+                user.setLastSeen(java.time.Instant.now());
+            }
             userRepository.save(user);
 
             PresencePayload payload = PresencePayload.builder()
                     .username(username)
                     .online(online)
+                    .lastSeen(user.getLastSeenPrivacy() != User.PrivacySetting.NOBODY ? user.getLastSeen() : null)
                     .build();
 
             messagingTemplate.convertAndSend("/topic/presence", payload);

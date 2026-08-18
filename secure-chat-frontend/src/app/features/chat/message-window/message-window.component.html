@@ -9,8 +9,13 @@
       [message]="message"
       [isOwn]="message.senderUsername === currentUsername"
       [isAdmin]="isAdmin"
+      [readReceiptsEnabled]="readReceiptsEnabled"
+      [currentUsername]="currentUsername"
       (pinMessage)="pinMessage.emit($event)"
       (unpinMessage)="unpinMessage.emit($event)"
+      (editMessage)="editMessage.emit($event)"
+      (deleteMessage)="deleteMessage.emit($event)"
+      (reactToMessage)="reactToMessage.emit($event)"
     ></app-message-bubble>
   }
 </div>

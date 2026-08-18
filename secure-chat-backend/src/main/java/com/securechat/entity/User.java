@@ -53,6 +53,23 @@ public class User {
     @Builder.Default
     private boolean onlineStatus = false;
 
+    @Column(name = "last_seen")
+    private Instant lastSeen;
+
+    @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @Column(name = "last_seen_privacy", nullable = false, length = 20)
+    @Builder.Default
+    private PrivacySetting lastSeenPrivacy = PrivacySetting.EVERYONE;
+
+    @Column(name = "read_receipts", nullable = false)
+    @Builder.Default
+    private boolean readReceiptsEnabled = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private boolean isDeleted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -75,4 +92,12 @@ public class User {
     public enum Role {
         USER, ADMIN
     }
+
+    /**
+     * Privacy settings for user features.
+     */
+    public enum PrivacySetting {
+        EVERYONE, CONTACTS, NOBODY
+    }
+
 }

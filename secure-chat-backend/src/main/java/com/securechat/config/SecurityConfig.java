@@ -60,6 +60,13 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
+                // Return 401 Unauthorized instead of default 403 Forbidden on auth failures
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage())
+                        )
+                )
+
                 // Endpoint authorization rules
                 .authorizeHttpRequests(auth -> auth
                         // Public: authentication endpoints

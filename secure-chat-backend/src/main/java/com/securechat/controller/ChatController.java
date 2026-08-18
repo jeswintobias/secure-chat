@@ -1,8 +1,14 @@
 package com.securechat.controller;
 
+import com.securechat.dto.request.MessageEditRequest;
+import com.securechat.dto.request.ReactionRequest;
 import com.securechat.dto.response.MessageReadDto;
 import com.securechat.dto.response.MessageResponse;
+import com.securechat.dto.response.ReactionResponse;
+import com.securechat.dto.websocket.MessageDeletePayload;
+import com.securechat.dto.websocket.MessageEditPayload;
 import com.securechat.dto.websocket.MessageReadPayload;
+import com.securechat.dto.websocket.ReactionPayload;
 import com.securechat.dto.websocket.TypingIndicatorPayload;
 import com.securechat.dto.websocket.WebSocketMessagePayload;
 import com.securechat.entity.User;
@@ -17,9 +23,12 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,6 +54,9 @@ import java.util.UUID;
  *   <li>{@code GET /api/conversations/{id}/messages/pinned} — pinned messages</li>
  *   <li>{@code POST /api/messages/{id}/pin} — pin a message (ADMIN only)</li>
  *   <li>{@code POST /api/messages/{id}/unpin} — unpin a message (ADMIN only)</li>
+ *   <li>{@code PUT /api/messages/{id}} — edit a message (sender only, 20-min window)</li>
+ *   <li>{@code DELETE /api/messages/{id}} — delete a message</li>
+ *   <li>{@code POST /api/messages/{id}/react} — toggle reaction</li>
  * </ul>
  */
 @RestController
@@ -78,7 +90,7 @@ public class ChatController {
         String senderUsername = principal.getName();
         log.debug("WebSocket message from {} to conversation {}", senderUsername, conversationId);
 
-        // Persist the message (XSS sanitization happens inside the service)
+        // Persist the message (XSS sanitization happens inside the service for non-encrypted messages)
         MessageResponse messageResponse = messageService.sendMessage(
                 conversationId,
                 senderUsername,
@@ -86,7 +98,9 @@ public class ChatController {
                 payload.getExpiryMinutes(),
                 payload.getAttachmentUrl(),
                 payload.getAttachmentType(),
-                payload.getOriginalName()
+                payload.getOriginalName(),
+                payload.isEncrypted(),
+                payload.getIv()
         );
 
         // Broadcast the sanitized message to all subscribers of this conversation
@@ -255,6 +269,150 @@ public class ChatController {
     ) {
         enforceAdminRole(principal.getName());
         MessageResponse response = messageService.unpinMessage(messageId);
+        return ResponseEntity.ok(response);
+    }
+
+    // ======================== Message Edit (WebSocket + REST) ========================
+
+    /**
+     * Handles message edit events over STOMP WebSocket.
+     * Broadcasts the edited message to all subscribers of the conversation.
+     *
+     * @param conversationId the conversation containing the message
+     * @param payload        the edit payload (messageId, new content, encryption metadata)
+     * @param principal      the authenticated user
+     */
+    @MessageMapping("/chat.edit/{conversationId}")
+    public void editMessage(
+            @DestinationVariable UUID conversationId,
+            @Payload MessageEditPayload payload,
+            Principal principal
+    ) {
+        String username = principal.getName();
+        log.debug("Edit request from {} for message {} in conversation {}",
+                username, payload.getMessageId(), conversationId);
+
+        MessageResponse response = messageService.editMessage(
+                payload.getMessageId(), username,
+                payload.getContent(), payload.isEncrypted(), payload.getIv());
+
+        messagingTemplate.convertAndSend(
+                "/topic/conversation/" + conversationId + "/edit",
+                response);
+    }
+
+    /**
+     * Edits a message via REST (for retry/offline scenarios).
+     *
+     * @param messageId the message to edit
+     * @param request   the edit request body
+     * @param principal the authenticated user
+     * @return the updated MessageResponse
+     */
+    @PutMapping("/messages/{messageId}")
+    public ResponseEntity<MessageResponse> editMessageRest(
+            @PathVariable UUID messageId,
+            @RequestBody MessageEditRequest request,
+            Principal principal
+    ) {
+        MessageResponse response = messageService.editMessage(
+                messageId, principal.getName(),
+                request.getContent(), request.isEncrypted(), request.getIv());
+        return ResponseEntity.ok(response);
+    }
+
+    // ======================== Message Delete (WebSocket + REST) ========================
+
+    /**
+     * Handles message delete events over STOMP WebSocket.
+     * Supports two modes via payload.mode:
+     * - "EVERYONE" = soft delete for all participants
+     * - "ME" = hide only for the requesting user
+     *
+     * @param conversationId the conversation containing the message
+     * @param payload        the delete payload (messageId, mode)
+     * @param principal      the authenticated user
+     */
+    @MessageMapping("/chat.delete/{conversationId}")
+    public void deleteMessage(
+            @DestinationVariable UUID conversationId,
+            @Payload MessageDeletePayload payload,
+            Principal principal
+    ) {
+        String username = principal.getName();
+        log.debug("Delete request from {} for message {} in conversation {}",
+                username, payload.getMessageId(), conversationId);
+
+        // Soft delete for everyone
+        MessageResponse response = messageService.deleteMessage(
+                payload.getMessageId(), username);
+        messagingTemplate.convertAndSend(
+                "/topic/conversation/" + conversationId + "/delete",
+                response);
+    }
+
+    /**
+     * Deletes a message via REST.
+     *
+     * @param messageId the message to delete
+     * @param mode      deletion mode: "EVERYONE" or "ME" (default: EVERYONE)
+     * @param principal the authenticated user
+     * @return the updated MessageResponse (for EVERYONE mode) or 204 No Content (for ME mode)
+     */
+    @DeleteMapping("/messages/{messageId}")
+    public ResponseEntity<MessageResponse> deleteMessageRest(
+            @PathVariable UUID messageId,
+            Principal principal
+    ) {
+        MessageResponse response = messageService.deleteMessage(
+                messageId, principal.getName());
+        return ResponseEntity.ok(response);
+    }
+
+    // ======================== Message Reactions (WebSocket + REST) ========================
+
+    /**
+     * Handles reaction toggle events over STOMP WebSocket.
+     * Broadcasts the reaction change to all subscribers.
+     *
+     * @param conversationId the conversation containing the message
+     * @param payload        the reaction payload (messageId, emoji)
+     * @param principal      the authenticated user
+     */
+    @MessageMapping("/chat.react/{conversationId}")
+    public void reactToMessage(
+            @DestinationVariable UUID conversationId,
+            @Payload ReactionPayload payload,
+            Principal principal
+    ) {
+        String username = principal.getName();
+        log.debug("Reaction {} from {} on message {} in conversation {}",
+                payload.getEmoji(), username, payload.getMessageId(), conversationId);
+
+        ReactionResponse response = messageService.toggleReaction(
+                payload.getMessageId(), username, payload.getEmoji());
+
+        messagingTemplate.convertAndSend(
+                "/topic/conversation/" + conversationId + "/reaction",
+                response);
+    }
+
+    /**
+     * Toggles a reaction via REST.
+     *
+     * @param messageId the message to react to
+     * @param request   the reaction request (emoji)
+     * @param principal the authenticated user
+     * @return the ReactionResponse indicating ADDED or REMOVED
+     */
+    @PostMapping("/messages/{messageId}/react")
+    public ResponseEntity<ReactionResponse> reactToMessageRest(
+            @PathVariable UUID messageId,
+            @RequestBody ReactionRequest request,
+            Principal principal
+    ) {
+        ReactionResponse response = messageService.toggleReaction(
+                messageId, principal.getName(), request.getEmoji());
         return ResponseEntity.ok(response);
     }
 

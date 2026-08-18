@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { MessageResponse, Page } from '../../shared/models/message.dto';
+import { MessageResponse, ReactionResponse, Page } from '../../shared/models/message.dto';
 
 /**
  * REST service for message operations.
@@ -91,6 +91,50 @@ export class MessageService {
     return this.http.post<void>(
       `${this.baseUrl}/${conversationId}/read`,
       {},
+    );
+  }
+
+  /**
+   * Edits a message via REST (fallback for WebSocket).
+   *
+   * @param messageId UUID of the message to edit
+   * @param content new content (plaintext or ciphertext)
+   * @param encrypted whether the new content is E2EE encrypted
+   * @param iv fresh AES-GCM IV (required when encrypted=true)
+   */
+  editMessage(
+    messageId: string,
+    content: string,
+    encrypted = false,
+    iv: string | null = null,
+  ): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(
+      `${this.messagesUrl}/${messageId}`,
+      { content, encrypted, iv },
+    );
+  }
+
+  /**
+   * Deletes a message via REST (fallback for WebSocket).
+   *
+   * @param messageId UUID of the message to delete
+   */
+  deleteMessage(messageId: string): Observable<MessageResponse> {
+    return this.http.delete<MessageResponse>(
+      `${this.messagesUrl}/${messageId}`,
+    );
+  }
+
+  /**
+   * Toggles an emoji reaction on a message via REST.
+   *
+   * @param messageId UUID of the message
+   * @param emoji the emoji to toggle
+   */
+  toggleReaction(messageId: string, emoji: string): Observable<ReactionResponse> {
+    return this.http.post<ReactionResponse>(
+      `${this.messagesUrl}/${messageId}/react`,
+      { emoji },
     );
   }
 }

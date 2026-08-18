@@ -76,7 +76,7 @@
     </button>
 
     <!-- Message textarea (hidden if preview is active to prevent double input) -->
-    @if (!selectedFile) {
+    @if (!selectedFile && !isRecording) {
       <textarea
         id="message-input"
         class="message-textarea"
@@ -88,62 +88,96 @@
       ></textarea>
     }
 
+    <!-- Recording UI overlay -->
+    @if (isRecording) {
+      <div class="recording-ui">
+        <div class="recording-indicator">
+          <span class="recording-dot"></span>
+          <span class="recording-time">{{ formattedRecordingDuration }}</span>
+        </div>
+        <button class="recording-cancel-btn" (click)="cancelRecording()" title="Cancel recording">Cancel</button>
+      </div>
+    }
+
     <!-- Expiry button -->
-    <div class="expiry-wrapper">
+    @if (!isRecording) {
+      <div class="expiry-wrapper">
+        <button
+          id="expiry-button"
+          class="icon-btn expiry-btn"
+          [class.active]="selectedExpiry"
+          (click)="toggleExpiryMenu()"
+          title="Disappearing messages"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+          </svg>
+        </button>
+
+        <!-- Expiry dropdown menu -->
+        @if (showExpiryMenu) {
+          <div class="expiry-menu">
+            <div class="expiry-menu-title">Disappear after</div>
+            @for (option of expiryOptions; track option.value) {
+              <button
+                class="expiry-option"
+                [class.selected]="selectedExpiry === option.value"
+                (click)="selectExpiry(option)"
+              >
+                {{ option.label }}
+              </button>
+            }
+            @if (showCustomInput) {
+              <div class="expiry-custom">
+                <input
+                  type="number"
+                  class="expiry-custom-input"
+                  [(ngModel)]="customExpiryMinutes"
+                  placeholder="Minutes"
+                  min="1"
+                  max="10080"
+                />
+                <button class="expiry-custom-apply" (click)="applyCustomExpiry()">Apply</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Send or Microphone button -->
+    @if (isRecording) {
       <button
-        id="expiry-button"
-        class="icon-btn expiry-btn"
-        [class.active]="selectedExpiry"
-        (click)="toggleExpiryMenu()"
-        title="Disappearing messages"
+        class="send-btn active recording-send-btn"
+        (click)="stopRecording()"
+        title="Send voice message"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
         </svg>
       </button>
-
-      <!-- Expiry dropdown menu -->
-      @if (showExpiryMenu) {
-        <div class="expiry-menu">
-          <div class="expiry-menu-title">Disappear after</div>
-          @for (option of expiryOptions; track option.value) {
-            <button
-              class="expiry-option"
-              [class.selected]="selectedExpiry === option.value"
-              (click)="selectExpiry(option)"
-            >
-              {{ option.label }}
-            </button>
-          }
-          @if (showCustomInput) {
-            <div class="expiry-custom">
-              <input
-                type="number"
-                class="expiry-custom-input"
-                [(ngModel)]="customExpiryMinutes"
-                placeholder="Minutes"
-                min="1"
-                max="10080"
-              />
-              <button class="expiry-custom-apply" (click)="applyCustomExpiry()">Apply</button>
-            </div>
-          }
-        </div>
-      }
-    </div>
-
-    <!-- Send button -->
-    <button
-      id="send-button"
-      class="send-btn"
-      [class.active]="canSend"
-      [disabled]="!canSend"
-      (click)="send()"
-      title="Send message"
-    >
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-      </svg>
-    </button>
+    } @else if (canSend) {
+      <button
+        id="send-button"
+        class="send-btn active"
+        (click)="send()"
+        title="Send message"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    } @else {
+      <button
+        id="mic-button"
+        class="icon-btn mic-btn"
+        (click)="startRecording()"
+        title="Record voice message"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+        </svg>
+      </button>
+    }
   </div>
 </footer>

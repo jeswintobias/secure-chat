@@ -2,7 +2,9 @@
   <div class="header-info">
     <div class="header-avatar">{{ getInitials(conversation.name) }}</div>
     <div class="header-text">
-      <h2 class="header-name">{{ conversation.name }}</h2>
+      <h2 class="header-name">
+        {{ conversation.name }}
+      </h2>
       @if (typingUsers.length > 0) {
         <span class="typing-indicator">
           <span class="typing-dots">
@@ -11,7 +13,13 @@
           {{ typingText }}
         </span>
       } @else {
-        <span class="header-subtitle">{{ conversation.memberCount }} members</span>
+        @if (conversation.type === 'PRIVATE') {
+          <span class="header-subtitle" [class.online]="privateChatStatus === 'Online'">
+            {{ privateChatStatus }}
+          </span>
+        } @else {
+          <span class="header-subtitle">{{ conversation.memberCount }} members</span>
+        }
       }
     </div>
   </div>

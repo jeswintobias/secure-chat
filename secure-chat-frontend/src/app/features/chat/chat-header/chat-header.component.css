@@ -13,7 +13,12 @@
 }
 .header-text { display: flex; flex-direction: column; }
 .header-name { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0; }
-.header-subtitle { font-size: 13px; color: var(--text-secondary); }
+.header-subtitle {
+  font-size: 13px; color: var(--text-muted); margin: 0;
+}
+.header-subtitle.online {
+  color: var(--accent-primary);
+}
 .typing-indicator {
   display: flex; align-items: center; gap: 6px;
   font-size: 13px; color: var(--accent-primary); font-weight: 500;

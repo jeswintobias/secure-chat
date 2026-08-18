@@ -7,12 +7,16 @@ import { GroupService } from '../../../core/services/group.service';
 import { ConnectionService } from '../../../core/services/connection.service';
 import { MessageService } from '../../../core/services/message.service';
 import { FileUploadService } from '../../../core/services/file-upload.service';
-import { GroupResponse, MessageResponse, TypingIndicatorPayload, RosterUpdatePayload, MessageReadPayload, WebSocketErrorPayload, ConnectionRequestResponse, PresencePayload } from '../../../shared/models';
+import { UserService } from '../../../core/services/user.service';
+import { CryptoService } from '../../../core/services/crypto.service';
+import { KeyManagementService } from '../../../core/services/key-management.service';
+import { GroupResponse, MessageResponse, ReactionResponse, TypingIndicatorPayload, RosterUpdatePayload, MessageReadPayload, WebSocketErrorPayload, ConnectionRequestResponse, PresencePayload, UserResponse } from '../../../shared/models';
 import { ChatSidebarComponent } from '../chat-sidebar/chat-sidebar.component';
 import { ChatHeaderComponent } from '../chat-header/chat-header.component';
 import { MessageWindowComponent } from '../message-window/message-window.component';
 import { MessageInputComponent, MessageInputPayload } from '../message-input/message-input.component';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+import DOMPurify from 'dompurify';
 
 
 /**
@@ -27,6 +31,7 @@ import { EmptyStateComponent } from '../empty-state/empty-state.component';
  * - Handles file upload → send message flow
  * - Manages read receipts (send + receive)
  * - Manages pinned messages (load, pin, unpin)
+ * - **E2EE**: Encrypts outgoing messages, decrypts incoming messages & history
  * - Passes data down to dumb children via @Input()
  * - Handles events emitted up via @Output()
  */
@@ -54,6 +59,7 @@ export class ChatShellComponent implements OnInit, OnDestroy {
   pinnedMessages: MessageResponse[] = [];
   currentUsername = '';
   currentEmail = '';
+  currentUserProfile: UserResponse | null = null;
   isProfilePopupOpen = false;
   isAdmin = false;
 
@@ -62,6 +68,8 @@ export class ChatShellComponent implements OnInit, OnDestroy {
 
   /** Live username → online status map, updated by WebSocket presence events. */
   presenceMap = new Map<string, boolean>();
+  /** Live username → last seen map. */
+  lastSeenMap = new Map<string, string | null>();
 
   /** URL security / WebSocket error toast (null = hidden). */
   wsError: string | null = null;
@@ -78,6 +86,9 @@ export class ChatShellComponent implements OnInit, OnDestroy {
   private globalMessageSubs: Subscription[] = [];
   private wsConnectionSub?: Subscription;
   private wsPresenceSub?: Subscription;
+  private wsEditSub?: Subscription;
+  private wsDeleteSub?: Subscription;
+  private wsReactionSub?: Subscription;
 
   constructor(
     private readonly authService: AuthService,
@@ -86,6 +97,9 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     private readonly messageService: MessageService,
     private readonly fileUploadService: FileUploadService,
     private readonly connectionService: ConnectionService,
+    private readonly userService: UserService,
+    private readonly cryptoService: CryptoService,
+    private readonly keyManagementService: KeyManagementService,
     private readonly cdr: ChangeDetectorRef,
     private readonly elRef: ElementRef,
   ) {}
@@ -104,10 +118,27 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     }
   }
 
+  openSettings(): void {
+    if (this.sidebar) {
+      this.sidebar.openSettingsDialog();
+    }
+  }
+
   ngOnInit(): void {
     this.currentUsername = this.authService.getCurrentUsername();
     this.currentEmail = this.authService.getCurrentEmail();
     this.isAdmin = this.authService.isAdmin();
+
+    // Fetch full user profile
+    this.subscriptions.add(
+      this.userService.getCurrentUser().subscribe({
+        next: (user) => {
+          this.currentUserProfile = user;
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Failed to load user profile:', err),
+      })
+    );
 
     // Connect WebSocket
     this.wsService.connect();
@@ -119,8 +150,30 @@ export class ChatShellComponent implements OnInit, OnDestroy {
           this.groups = conversations;
           this.subscribeToAllRosters();
           this.subscribeToAllGlobalMessages();
+          
+          // Auto-select the most recent conversation on initial load if none is selected
+          if (!this.activeConversation && this.groups.length > 0) {
+            this.onConversationSelected(this.groups[0].id);
+          }
         },
         error: (err) => console.error('Failed to load conversations:', err),
+      })
+    );
+
+    // Seed the presenceMap from the database so that users who were
+    // already online before we connected appear with the correct status.
+    // After this initial load, real-time WebSocket events keep it updated.
+    this.subscriptions.add(
+      this.userService.getPresenceStatuses().subscribe({
+        next: (statuses) => {
+          const map = new Map<string, boolean>();
+          for (const [username, online] of Object.entries(statuses)) {
+            map.set(username, online);
+          }
+          this.presenceMap = map;
+          this.cdr.markForCheck();
+        },
+        error: (err) => console.error('Failed to load initial presence:', err),
       })
     );
 
@@ -186,6 +239,9 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsPresenceSub = this.wsService.watchPresence().subscribe({
       next: (payload: PresencePayload) => {
         this.presenceMap = new Map(this.presenceMap).set(payload.username, payload.online);
+        if (!payload.online && payload.lastSeen) {
+          this.lastSeenMap = new Map(this.lastSeenMap).set(payload.username, payload.lastSeen);
+        }
         this.cdr.markForCheck();
       },
     });
@@ -212,13 +268,19 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsMessageSub?.unsubscribe();
     this.wsTypingSub?.unsubscribe();
     this.wsReadSub?.unsubscribe();
+    this.wsEditSub?.unsubscribe();
+    this.wsDeleteSub?.unsubscribe();
+    this.wsReactionSub?.unsubscribe();
 
     // Load message history via REST
     this.subscriptions.add(
       this.messageService.getHistory(conversationId).subscribe({
-        next: (page) => {
+        next: async (page) => {
           // API returns newest-first; reverse for chronological display
-          this.messages = [...page.content].reverse();
+          const reversed = [...page.content].reverse();
+
+          // Decrypt encrypted messages in history
+          this.messages = await this.decryptMessages(reversed, conversationId, group.type);
           
           // Mark all unread messages as read in bulk
           if (this.activeConversation && this.activeConversation.id) {
@@ -245,12 +307,14 @@ export class ChatShellComponent implements OnInit, OnDestroy {
 
     // Subscribe to real-time messages via WebSocket
     this.wsMessageSub = this.wsService.watchConversation(conversationId).subscribe({
-      next: (message) => {
-        this.messages = [...this.messages, message];
+      next: async (message) => {
+        // Decrypt if encrypted
+        const decrypted = await this.decryptSingleMessage(message, conversationId, group.type);
+        this.messages = [...this.messages, decrypted];
         this.cdr.markForCheck();
         // Send read receipt for incoming messages from other users
-        if (message.senderUsername !== this.currentUsername) {
-          this.wsService.sendReadReceipt(conversationId, message.id);
+        if (decrypted.senderUsername !== this.currentUsername) {
+          this.wsService.sendReadReceipt(conversationId, decrypted.id);
         }
       },
     });
@@ -274,6 +338,33 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.wsReadSub = this.wsService.watchReadReceipts(conversationId).subscribe({
       next: (payload: MessageReadPayload) => {
         this.handleReadReceipt(payload);
+        this.cdr.markForCheck();
+      },
+    });
+
+    // Subscribe to message edit events via WebSocket
+    this.wsEditSub = this.wsService.watchEdits(conversationId).subscribe({
+      next: async (editedMessage) => {
+        // Decrypt the edited message if encrypted
+        const decrypted = await this.decryptSingleMessage(editedMessage, conversationId, group.type);
+        this.messages = this.messages.map(m => m.id === decrypted.id ? decrypted : m);
+        this.cdr.markForCheck();
+      },
+    });
+
+    // Subscribe to message delete events via WebSocket
+    this.wsDeleteSub = this.wsService.watchDeletes(conversationId).subscribe({
+      next: (deletedMessage) => {
+        // Replace the message in the list with its deleted version
+        this.messages = this.messages.map(m => m.id === deletedMessage.id ? deletedMessage : m);
+        this.cdr.markForCheck();
+      },
+    });
+
+    // Subscribe to reaction events via WebSocket
+    this.wsReactionSub = this.wsService.watchReactions(conversationId).subscribe({
+      next: (reaction: ReactionResponse) => {
+        this.handleReaction(reaction);
         this.cdr.markForCheck();
       },
     });
@@ -320,31 +411,78 @@ export class ChatShellComponent implements OnInit, OnDestroy {
   /**
    * Called when the user sends a message from the input component.
    * Handles optional file upload before sending the WebSocket message.
+   * **E2EE**: Encrypts message content before transmission.
    */
-  onMessageSent(payload: MessageInputPayload): void {
+  async onMessageSent(payload: MessageInputPayload): Promise<void> {
     if (!this.activeConversation) return;
     if (!payload.content.trim() && !payload.attachmentFile) return;
 
     const conversationId = this.activeConversation.id;
+    const convType = this.activeConversation.type as 'PRIVATE' | 'GROUP';
+
+    // Get the conversation's encryption key
+    const cryptoKey = await this.keyManagementService.getConversationKey(
+      conversationId, convType
+    );
 
     if (payload.attachmentFile) {
       // Upload file first, then send message with attachment URL
       this.fileUploadService.upload(payload.attachmentFile).subscribe({
-        next: (uploadResponse) => {
+        next: async (uploadResponse) => {
+          let content = payload.content.trim();
+          let encrypted = false;
+          let iv: string | null = null;
+
+          // Encrypt text content if we have a key
+          if (cryptoKey && content) {
+            try {
+              const result = await this.cryptoService.encryptMessage(
+                content, cryptoKey, conversationId
+              );
+              content = result.ciphertext;
+              iv = result.iv;
+              encrypted = true;
+            } catch (err) {
+              console.warn('[E2EE] Encryption failed, sending plaintext:', err);
+            }
+          }
+
           this.wsService.sendMessage(conversationId, {
-            content: payload.content.trim(),
+            content,
             expiryMinutes: payload.expiryMinutes ?? null,
             attachmentUrl: uploadResponse.url,
             attachmentType: uploadResponse.contentType,
+            encrypted,
+            iv,
           });
         },
         error: (err) => console.error('File upload failed:', err),
       });
     } else {
       // Text-only message (with optional expiry)
+      let content = payload.content.trim();
+      let encrypted = false;
+      let iv: string | null = null;
+
+      // Encrypt if we have a key
+      if (cryptoKey && content) {
+        try {
+          const result = await this.cryptoService.encryptMessage(
+            content, cryptoKey, conversationId
+          );
+          content = result.ciphertext;
+          iv = result.iv;
+          encrypted = true;
+        } catch (err) {
+          console.warn('[E2EE] Encryption failed, sending plaintext:', err);
+        }
+      }
+
       this.wsService.sendMessage(conversationId, {
-        content: payload.content.trim(),
+        content,
         expiryMinutes: payload.expiryMinutes ?? null,
+        encrypted,
+        iv,
       });
     }
   }
@@ -399,17 +537,90 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ════════════════════════════════════════════════════════════
+  // Edit / Delete / React handlers
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Called when the user edits a message from the bubble component.
+   * Encrypts the new content if E2EE is active, then sends via WebSocket.
+   */
+  async onEditMessage(event: { messageId: string; content: string }): Promise<void> {
+    if (!this.activeConversation) return;
+
+    const conversationId = this.activeConversation.id;
+    const convType = this.activeConversation.type as 'PRIVATE' | 'GROUP';
+
+    let content = event.content;
+    let encrypted = false;
+    let iv: string | null = null;
+
+    // Re-encrypt with fresh IV if E2EE is active
+    const cryptoKey = await this.keyManagementService.getConversationKey(
+      conversationId, convType
+    );
+
+    if (cryptoKey && content) {
+      try {
+        const result = await this.cryptoService.encryptMessage(
+          content, cryptoKey, conversationId
+        );
+        content = result.ciphertext;
+        iv = result.iv;
+        encrypted = true;
+      } catch (err) {
+        console.warn('[E2EE] Encryption failed for edit, sending plaintext:', err);
+      }
+    }
+
+    this.wsService.sendEdit(conversationId, {
+      messageId: event.messageId,
+      content,
+      encrypted,
+      iv,
+    });
+  }
+
+  /**
+   * Called when the user deletes a message from the bubble component.
+   * Sends the delete command via WebSocket.
+   */
+  onDeleteMessage(messageId: string): void {
+    if (!this.activeConversation) return;
+    this.wsService.sendDelete(this.activeConversation.id, {
+      messageId,
+      mode: 'EVERYONE',
+    });
+  }
+
+  /**
+   * Called when the user reacts to a message from the bubble component.
+   * Sends the reaction toggle via WebSocket.
+   */
+  onReactToMessage(event: { messageId: string; emoji: string }): void {
+    if (!this.activeConversation) return;
+    this.wsService.sendReaction(
+      this.activeConversation.id,
+      event.messageId,
+      event.emoji
+    );
+  }
+
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
     this.wsMessageSub?.unsubscribe();
     this.wsTypingSub?.unsubscribe();
     this.wsReadSub?.unsubscribe();
+    this.wsEditSub?.unsubscribe();
+    this.wsDeleteSub?.unsubscribe();
+    this.wsReactionSub?.unsubscribe();
     this.wsErrorSub?.unsubscribe();
     this.wsConnectionSub?.unsubscribe();
     this.wsPresenceSub?.unsubscribe();
     if (this.wsErrorTimeout) clearTimeout(this.wsErrorTimeout);
     this.unsubscribeAllRosters();
     this.unsubscribeAllGlobalMessages();
+    this.keyManagementService.clearCache();
     this.wsService.disconnect();
   }
 
@@ -442,6 +653,62 @@ export class ChatShellComponent implements OnInit, OnDestroy {
           },
         ],
       };
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Reaction handling
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Updates the local message list when a reaction event is received.
+   * Locally patches the affected message's reaction summaries so we don't
+   * need to refetch from the server.
+   */
+  private handleReaction(reaction: ReactionResponse): void {
+    this.messages = this.messages.map(msg => {
+      if (msg.id !== reaction.messageId) return msg;
+
+      const existingReactions = [...(msg.reactions ?? [])];
+
+      if (reaction.action === 'ADDED') {
+        const existing = existingReactions.find(r => r.emoji === reaction.emoji);
+        if (existing) {
+          // Add user to existing emoji group
+          if (!existing.usernames.includes(reaction.username)) {
+            return {
+              ...msg,
+              reactions: existingReactions.map(r =>
+                r.emoji === reaction.emoji
+                  ? { ...r, count: r.count + 1, usernames: [...r.usernames, reaction.username] }
+                  : r
+              ),
+            };
+          }
+        } else {
+          // New emoji group
+          return {
+            ...msg,
+            reactions: [
+              ...existingReactions,
+              { emoji: reaction.emoji, count: 1, usernames: [reaction.username] },
+            ],
+          };
+        }
+      } else if (reaction.action === 'REMOVED') {
+        return {
+          ...msg,
+          reactions: existingReactions
+            .map(r =>
+              r.emoji === reaction.emoji
+                ? { ...r, count: r.count - 1, usernames: r.usernames.filter(u => u !== reaction.username) }
+                : r
+            )
+            .filter(r => r.count > 0), // Remove empty reaction groups
+        };
+      }
+
+      return msg;
     });
   }
 
@@ -584,8 +851,140 @@ export class ChatShellComponent implements OnInit, OnDestroy {
     this.isProfilePopupOpen = !this.isProfilePopupOpen;
   }
 
+  // ════════════════════════════════════════════════════════════
+  // E2EE Key Backup (Export / Import)
+  // ════════════════════════════════════════════════════════════
+
+  async exportKey(): Promise<void> {
+    const username = this.authService.getCurrentUsername();
+    if (!username) return;
+
+    const privateKey = await this.cryptoService.getPrivateKey(username);
+    if (!privateKey) {
+      alert('No private key found on this device.');
+      return;
+    }
+
+    const password = window.prompt('Enter a strong password to encrypt your key backup:');
+    if (!password) return;
+    if (password.length < 8) {
+      alert('Password must be at least 8 characters long.');
+      return;
+    }
+
+    try {
+      const exported = await this.cryptoService.exportPrivateKeyWithPassword(privateKey, password);
+      // Create a downloadable file
+      const blob = new Blob([exported], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `securechat-key-${username}.backup`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export key:', err);
+      alert('Failed to export key. See console for details.');
+    }
+  }
+
+  async importKeyPrompt(): Promise<void> {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.backup';
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const password = window.prompt('Enter the password you used to encrypt this backup:');
+      if (!password) return;
+
+      try {
+        const text = await file.text();
+        const username = this.authService.getCurrentUsername();
+        if (!username) return;
+
+        const importedKey = await this.cryptoService.importPrivateKeyWithPassword(text, password);
+        
+        // Store the imported private key in IndexedDB
+        await this.cryptoService.storePrivateKey(username, importedKey);
+        
+        alert('Key imported successfully!');
+        
+        // Reload to re-initialize everything properly
+        window.location.reload();
+      } catch (err) {
+        console.error('Failed to import key:', err);
+        alert('Failed to import key. Incorrect password or invalid file.');
+      }
+    };
+    input.click();
+  }
+
   onLogout(): void {
     this.wsService.disconnect();
     this.authService.logout();
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // E2EE Decryption Helpers
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Decrypts a single encrypted message.
+   * If decryption fails or the message is not encrypted, returns it as-is.
+   * Applies mandatory DOMPurify sanitization after decryption.
+   */
+  private async decryptSingleMessage(
+    message: MessageResponse,
+    conversationId: string,
+    conversationType: string
+  ): Promise<MessageResponse> {
+    if (!message.encrypted || !message.iv) {
+      return message;
+    }
+
+    try {
+      const key = await this.keyManagementService.getConversationKey(
+        conversationId,
+        conversationType as 'PRIVATE' | 'GROUP'
+      );
+
+      if (!key) {
+        return { ...message, content: '🔒 [Encrypted — key unavailable]' };
+      }
+
+      const decrypted = await this.cryptoService.decryptMessage(
+        message.content, message.iv, key, conversationId
+      );
+
+      // Mandatory client-side XSS sanitization after decryption
+      const sanitized = DOMPurify.sanitize(decrypted);
+
+      return { ...message, content: sanitized };
+    } catch (err) {
+      console.warn('[E2EE] Failed to decrypt message', message.id, err);
+      return { ...message, content: '🔒 [Decryption failed]' };
+    }
+  }
+
+  /**
+   * Batch-decrypts an array of messages (e.g., loaded from history).
+   * Non-encrypted messages pass through unchanged.
+   */
+  private async decryptMessages(
+    messages: MessageResponse[],
+    conversationId: string,
+    conversationType: string
+  ): Promise<MessageResponse[]> {
+    const results: MessageResponse[] = [];
+
+    for (const msg of messages) {
+      results.push(
+        await this.decryptSingleMessage(msg, conversationId, conversationType)
+      );
+    }
+
+    return results;
   }
 }

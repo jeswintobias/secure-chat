@@ -3,29 +3,7 @@
   <div class="sidebar-header">
     <h2 class="sidebar-title">{{ currentUsername }}</h2>
     <div class="header-actions">
-      <button class="icon-btn" title="Add Friend" id="btn-add-friend" (click)="openAddFriendDialog()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 8c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm-6 4c.22-.72 3.31-2 6-2 2.7 0 5.8 1.29 6 2H9zM2 15h3v-3h2v3h3v2H7v3H5v-3H2z"/>
-        </svg>
-      </button>
-      <button class="icon-btn" title="Pending Requests" id="btn-pending-requests" (click)="openPendingDialog()" style="position: relative;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-        </svg>
-        @if (pendingCount > 0) {
-          <span class="badge">{{ pendingCount }}</span>
-        }
-      </button>
-      <button class="icon-btn" title="Create Group" id="btn-create-group" (click)="openCreateDialog()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-        </svg>
-      </button>
-      <button class="icon-btn" title="Join Group" id="btn-join-group" (click)="openJoinDialog()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-        </svg>
-      </button>
+      <!-- Actions moved to FAB -->
     </div>
   </div>
 
@@ -111,13 +89,52 @@
     }
   </div>
 
+  <!-- Floating Action Button (FAB) -->
+  <div class="fab-container">
+    <button class="fab-btn" [class.active]="isFabMenuOpen" (click)="toggleFabMenu()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <!-- A plus icon -->
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+      </svg>
+    </button>
+    
+    @if (isFabMenuOpen) {
+      <div class="fab-menu">
+        <button class="fab-menu-item" (click)="openAddFriendDialog()">
+          <span class="fab-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 8c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm-6 4c.22-.72 3.31-2 6-2 2.7 0 5.8 1.29 6 2H9zM2 15h3v-3h2v3h3v2H7v3H5v-3H2z"/>
+            </svg>
+          </span>
+          <span class="fab-label">Search / Add User</span>
+        </button>
+        <button class="fab-menu-item" (click)="openCreateDialog()">
+          <span class="fab-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+            </svg>
+          </span>
+          <span class="fab-label">Create Group</span>
+        </button>
+        <button class="fab-menu-item" (click)="openJoinDialog()">
+          <span class="fab-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </span>
+          <span class="fab-label">Join Group</span>
+        </button>
+      </div>
+    }
+  </div>
+
   <!-- ═══════════════════════════════════════════════
        Overlay Panels (Create / Join / Created)
        ═══════════════════════════════════════════════ -->
 
   @if (overlay !== 'none') {
     <div class="sidebar-overlay" (click)="closeOverlay()">
-      <div class="overlay-panel" [class.logout-overlay-panel]="overlay === 'more-options'" (click)="$event.stopPropagation()">
+      <div class="overlay-panel" (click)="$event.stopPropagation()">
 
         <!-- ── Create Group Form ── -->
         @if (overlay === 'create') {
@@ -344,23 +361,83 @@
           </div>
         }
 
-        <!-- ── More Options ── -->
-        @if (overlay === 'more-options') {
+        <!-- ── Settings ── -->
+        @if (overlay === 'settings') {
           <div class="overlay-header">
-            <h3 class="overlay-title">More Options</h3>
+            <h3 class="overlay-title">Settings</h3>
             <button class="overlay-close" (click)="closeOverlay()" title="Close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
               </svg>
             </button>
           </div>
-          <div class="overlay-body" style="display: flex; flex-direction: column; gap: 10px;">
-            <button class="btn-secondary" disabled>Profile (Coming Soon)</button>
-            <button class="btn-secondary" disabled>Settings (Coming Soon)</button>
+          <div class="overlay-body" style="display: flex; flex-direction: column; gap: 15px;">
+            @if (settingsLoading) {
+              <p class="search-status">Loading settings...</p>
+            } @else {
+              <div class="settings-group">
+                <h4 style="margin-bottom: 8px; color: var(--text-primary);">Privacy</h4>
+                
+                <label class="form-label">Last Seen Privacy</label>
+                <select class="form-input" [(ngModel)]="lastSeenPrivacy">
+                  <option value="EVERYONE">Everyone</option>
+                  <option value="CONTACTS">My Contacts</option>
+                  <option value="NOBODY">Nobody</option>
+                </select>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 15px;">
+                  <label class="form-label" style="margin: 0;">Read Receipts</label>
+                  <label class="switch">
+                    <input type="checkbox" [(ngModel)]="readReceiptsEnabled">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">
+                  If turned off, you won't send or receive read receipts.
+                </p>
+              </div>
+
+              @if (settingsSuccess) {
+                <p class="form-success">{{ settingsSuccess }}</p>
+              }
+              @if (settingsError) {
+                <p class="form-error">{{ settingsError }}</p>
+              }
+            }
           </div>
           <div class="overlay-footer">
-            <button class="btn-logout" (click)="onLogout()" style="width: 100%;">
-              Log Out
+            <button class="btn-secondary" style="flex: 1;" (click)="confirmDeleteAccount()" [disabled]="settingsLoading">
+              Delete Account
+            </button>
+            <button class="btn-primary" style="flex: 1;" (click)="saveSettings()" [disabled]="settingsLoading">
+              Save
+            </button>
+          </div>
+        }
+
+        <!-- ── Delete Account Confirm ── -->
+        @if (overlay === 'delete-confirm') {
+          <div class="overlay-header">
+            <h3 class="overlay-title" style="color: #ff6b6b;">Delete Account?</h3>
+            <button class="overlay-close" (click)="closeOverlay()" title="Close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="overlay-body">
+            <p style="color: var(--text-primary);">Are you sure you want to delete your account?</p>
+            <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">
+              Your messages will remain in chats as a deleted user, but your profile and personal data will be removed. This action cannot be undone.
+            </p>
+            @if (settingsError) {
+              <p class="form-error">{{ settingsError }}</p>
+            }
+          </div>
+          <div class="overlay-footer">
+            <button class="btn-secondary" style="flex: 1;" (click)="openSettingsDialog()" [disabled]="settingsLoading">Cancel</button>
+            <button class="btn-primary" style="flex: 1; background: #ff6b6b;" (click)="deleteAccount()" [disabled]="settingsLoading">
+              {{ settingsLoading ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
         }

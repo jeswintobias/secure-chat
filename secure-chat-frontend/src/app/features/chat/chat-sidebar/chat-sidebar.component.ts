@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { GroupService } from '../../../core/services/group.service';
 import { ConnectionService } from '../../../core/services/connection.service';
 import { WebSocketService } from '../../../core/services/websocket.service';
+import { UserService } from '../../../core/services/user.service';
 
 /**
  * Sidebar view states for the overlay panel.
@@ -16,7 +17,7 @@ import { WebSocketService } from '../../../core/services/websocket.service';
  * - 'join': Join Group form
  * - 'created': Post-creation confirmation card with referral code
  */
-type SidebarOverlay = 'none' | 'create' | 'join' | 'created' | 'add-friend' | 'pending' | 'more-options';
+type SidebarOverlay = 'none' | 'create' | 'join' | 'created' | 'add-friend' | 'pending' | 'settings' | 'delete-confirm';
 
 /** localStorage key for pinned chat IDs. */
 const PINNED_CHATS_KEY = 'securechat_pinned_chats';
@@ -46,6 +47,20 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
 
   // ── Overlay state ──
   overlay: SidebarOverlay = 'none';
+  isFabMenuOpen = false;
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (this.isFabMenuOpen && !target.closest('.fab-container')) {
+      this.isFabMenuOpen = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  toggleFabMenu(): void {
+    this.isFabMenuOpen = !this.isFabMenuOpen;
+  }
 
   // ── Create Group form ──
   newGroupName = '';
@@ -80,11 +95,19 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
   pendingCount = 0;
   private wsSub: Subscription | null = null;
 
+  // ── Settings ──
+  settingsLoading = false;
+  settingsError = '';
+  settingsSuccess = '';
+  lastSeenPrivacy: 'EVERYONE' | 'CONTACTS' | 'NOBODY' = 'EVERYONE';
+  readReceiptsEnabled = true;
+
   constructor(
     private readonly authService: AuthService,
     private readonly groupService: GroupService,
     private readonly connectionService: ConnectionService,
     private readonly wsService: WebSocketService,
+    private readonly userService: UserService,
     private readonly cdr: ChangeDetectorRef,
   ) {
     // Load pinned chats from localStorage
@@ -201,17 +224,36 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
 
   // ── Overlay controls ──
 
-  openMoreOptionsDialog(): void {
-    this.overlay = 'more-options';
+  openSettingsDialog(): void {
+    this.overlay = 'settings';
+    this.settingsLoading = true;
+    this.settingsError = '';
+    this.settingsSuccess = '';
+    
+    this.userService.getCurrentUser().subscribe({
+      next: (user) => {
+        this.lastSeenPrivacy = user.lastSeenPrivacy || 'EVERYONE';
+        this.readReceiptsEnabled = user.readReceiptsEnabled ?? true;
+        this.settingsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.settingsError = 'Failed to load settings';
+        this.settingsLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   openCreateDialog(): void {
+    this.isFabMenuOpen = false;
     this.overlay = 'create';
     this.newGroupName = '';
     this.createError = '';
   }
 
   openJoinDialog(): void {
+    this.isFabMenuOpen = false;
     this.overlay = 'join';
     this.joinGroupId = '';
     this.joinReferralCode = '';
@@ -231,6 +273,7 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
   // ── Add Friend ──
 
   openAddFriendDialog(): void {
+    this.isFabMenuOpen = false;
     this.overlay = 'add-friend';
     this.friendSearchQuery = '';
     this.friendSearchResults = [];
@@ -295,6 +338,7 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
   // ── Pending Requests ──
 
   openPendingDialog(): void {
+    this.isFabMenuOpen = false;
     this.overlay = 'pending';
     this.pendingLoading = true;
 
@@ -457,5 +501,48 @@ export class ChatSidebarComponent implements OnInit, OnDestroy {
 
   private savePinnedChats(): void {
     localStorage.setItem(PINNED_CHATS_KEY, JSON.stringify([...this.pinnedChatIds]));
+  }
+
+  // ── Settings Actions ──
+  
+  saveSettings(): void {
+    this.settingsLoading = true;
+    this.settingsError = '';
+    this.settingsSuccess = '';
+
+    this.userService.updateSettings({
+      lastSeenPrivacy: this.lastSeenPrivacy,
+      readReceiptsEnabled: this.readReceiptsEnabled
+    }).subscribe({
+      next: () => {
+        this.settingsSuccess = 'Settings saved successfully';
+        this.settingsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.settingsError = 'Failed to save settings';
+        this.settingsLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  confirmDeleteAccount(): void {
+    this.overlay = 'delete-confirm';
+  }
+
+  deleteAccount(): void {
+    this.settingsLoading = true;
+    this.userService.deleteAccount().subscribe({
+      next: () => {
+        this.onLogout();
+      },
+      error: () => {
+        this.settingsError = 'Failed to delete account';
+        this.settingsLoading = false;
+        this.overlay = 'settings';
+        this.cdr.markForCheck();
+      }
+    });
   }
 }

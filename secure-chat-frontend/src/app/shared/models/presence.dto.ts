@@ -7,4 +7,5 @@
 export interface PresencePayload {
   readonly username: string;
   readonly online: boolean;
+  readonly lastSeen?: string;
 }

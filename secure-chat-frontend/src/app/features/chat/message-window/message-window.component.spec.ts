@@ -28,6 +28,8 @@ describe('MessageWindowComponent', () => {
       pinned: false,
       pinnedBy: null,
       pinnedAt: null,
+      encrypted: false,
+      iv: null,
       readReceipts: [],
       ...overrides,
     };

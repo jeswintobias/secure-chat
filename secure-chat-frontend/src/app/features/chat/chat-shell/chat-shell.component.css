@@ -87,6 +87,58 @@
   margin-bottom: 8px;
 }
 
+.profile-popup-divider {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 12px 0;
+  width: 100%;
+}
+
+.profile-popup-section {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.section-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e9edef;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.section-desc {
+  font-size: 11px;
+  color: #8696a0;
+  line-height: 1.4;
+  margin: 0 0 10px 0;
+}
+
+.key-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.key-btn {
+  flex: 1;
+  padding: 6px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e9edef;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.key-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .profile-popup-logout {
   display: flex;
   align-items: center;

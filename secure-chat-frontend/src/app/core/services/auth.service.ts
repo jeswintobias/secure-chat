@@ -1,9 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest } from '../../shared/models';
+import { KeyManagementService } from './key-management.service';
 
 const TOKEN_KEY = 'securechat_jwt';
 const USER_KEY = 'securechat_user';
@@ -16,6 +17,9 @@ const ROLE_KEY = 'securechat_role';
  * Manages JWT lifecycle: login, register, token storage, logout.
  * The JWT is stored in localStorage and injected into STOMP CONNECT
  * headers by WebSocketService and into HTTP requests by AuthInterceptor.
+ *
+ * After successful authentication, automatically initializes E2EE keys
+ * (generates ECDH key pair if needed, uploads public key to server).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -31,6 +35,7 @@ export class AuthService {
   constructor(
     private readonly http: HttpClient,
     private readonly router: Router,
+    private readonly injector: Injector,
   ) {}
 
   /**
@@ -55,6 +60,7 @@ export class AuthService {
 
   /**
    * Clears all stored credentials and navigates to login.
+   * Also clears the in-memory E2EE key cache.
    */
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
@@ -62,6 +68,13 @@ export class AuthService {
     localStorage.removeItem(EMAIL_KEY);
     localStorage.removeItem(ROLE_KEY);
     this.currentUserSubject.next(null);
+
+    // Clear E2EE key cache on logout
+    try {
+      const keyMgmt = this.injector.get(KeyManagementService);
+      keyMgmt.clearCache();
+    } catch { /* E2EE service may not be available */ }
+
     this.router.navigate(['/auth/login']);
   }
 
@@ -105,6 +118,25 @@ export class AuthService {
     localStorage.setItem(EMAIL_KEY, response.email);
     localStorage.setItem(ROLE_KEY, response.role);
     this.currentUserSubject.next(response.username);
+
+    // Fire-and-forget E2EE key initialization.
+    // Generates ECDH key pair (if needed) and uploads public key to server.
+    // Uses lazy import to avoid circular dependency.
+    this.initializeE2eeKeys();
+  }
+
+  /**
+   * Initializes E2EE keys asynchronously after authentication.
+   * Non-blocking: the chat UI loads while keys are set up in the background.
+   */
+  private async initializeE2eeKeys(): Promise<void> {
+    try {
+      const { KeyManagementService } = await import('./key-management.service');
+      const keyMgmt = this.injector.get(KeyManagementService);
+      await keyMgmt.initializeKeys();
+    } catch (err) {
+      console.warn('[E2EE] Key initialization failed (non-fatal):', err);
+    }
   }
 
   private getStoredUsername(): string | null {
