@@ -32,6 +32,19 @@ Here is what sets the Secure Chat System apart as a premium, enterprise-grade so
   - **Backend**: Spring Boot 3.3 + Java 23, Spring Security, Spring Data JPA (PostgreSQL).
   - **Frontend**: Angular 19 with Reactive patterns.
 
+## 💡 Technical Highlights (For Recruiters & Developers)
+
+This project was built to demonstrate advanced, production-ready software engineering practices:
+
+- **Hybrid OAuth 2.0 & JWT Architecture**: 
+  Implemented a custom authentication bridge using Google Identity Services. The Angular frontend handles the seamless 1-click UX (using an advanced invisible HTML overlay technique to bypass iframe styling limits), while the Spring Boot backend cryptographically verifies the `id_token` via Google's API Client before auto-provisioning the Postgres user and issuing a stateless internal JWT.
+- **Automated Testing Suite (TDD Practices)**: 
+  Maintains high code reliability through a robust automated testing strategy. Features backend Unit & Integration tests using **JUnit 5** and **Mockito** (mocking database layers like `MessageReactionRepository` for isolated service testing), and frontend component tests using **Karma/Jasmine**.
+- **Real-Time Distributed State**:
+  Architected a resilient WebSocket layer using the STOMP protocol. Solved complex real-time race conditions (like message read receipts and typing indicators) using RxJS observables (`RxStomp`) on the frontend to maintain a synchronized, localized state without overwhelming the backend.
+- **Defense-in-Depth Security**:
+  Beyond standard JWT authentication, this application employs defense-in-depth strategies including a 4-tier URL security pipeline (DNS lookups, HTTP probing) to prevent SSRF (Server-Side Request Forgery), and rigorous XSS sanitization utilizing JSoup.
+
 ## 🏗️ Architecture Overview
 
 The project is structured as a monorepo containing both frontend and backend:
