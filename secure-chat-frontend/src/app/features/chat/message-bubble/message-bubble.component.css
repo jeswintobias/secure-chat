@@ -27,7 +27,6 @@
 }
 .bubble-time { font-size: 11px; color: rgba(255,255,255,0.55); }
 .ephemeral-icon { font-size: 11px; opacity: 0.7; }
-.e2ee-icon { font-size: 10px; opacity: 0.65; }
 
 /* ── Pinned Message Indicator ── */
 .bubble-pinned {
@@ -236,6 +235,70 @@
 }
 .action-delete:hover {
   background: rgba(239, 83, 80, 0.2);
+}
+
+/* ── Delete Dropdown Menu ── */
+.delete-wrapper {
+  position: relative;
+}
+.delete-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  z-index: 30;
+  animation: deleteMenuSlide 0.15s ease-out;
+}
+@keyframes deleteMenuSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.delete-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  white-space: nowrap;
+}
+.delete-menu-item svg {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.delete-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.delete-menu-item:hover svg {
+  opacity: 1;
+}
+.delete-menu-everyone {
+  color: #ef5350;
+}
+.delete-menu-everyone:hover {
+  background: rgba(239, 83, 80, 0.12);
+}
+.delete-menu-everyone svg {
+  color: #ef5350;
 }
 
 /* ── Deleted Message State ── */

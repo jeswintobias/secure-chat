@@ -21,6 +21,7 @@ export class MessageWindowComponent implements AfterViewChecked {
   @Output() unpinMessage = new EventEmitter<string>();
   @Output() editMessage = new EventEmitter<{ messageId: string; content: string }>();
   @Output() deleteMessage = new EventEmitter<string>();
+  @Output() deleteForMe = new EventEmitter<string>();
   @Output() reactToMessage = new EventEmitter<{ messageId: string; emoji: string }>();
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef<HTMLDivElement>;

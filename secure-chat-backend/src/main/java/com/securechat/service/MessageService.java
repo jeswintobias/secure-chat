@@ -9,12 +9,14 @@ import com.securechat.entity.MessageReaction;
 import com.securechat.entity.MessageRead;
 import com.securechat.entity.Conversation;
 import com.securechat.entity.User;
+import com.securechat.entity.UserDeletedMessage;
 import com.securechat.exception.ResourceNotFoundException;
 import com.securechat.exception.UnsafeUrlException;
 import com.securechat.repository.ChatMessageRepository;
 import com.securechat.repository.ConversationRepository;
 import com.securechat.repository.MessageReactionRepository;
 import com.securechat.repository.MessageReadRepository;
+import com.securechat.repository.UserDeletedMessageRepository;
 import com.securechat.repository.UserRepository;
 import com.securechat.service.urlsecurity.UrlScanResult;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +56,7 @@ public class MessageService {
     private final UserRepository userRepository;
     private final MessageReadRepository messageReadRepository;
     private final MessageReactionRepository reactionRepository;
+    private final UserDeletedMessageRepository userDeletedMessageRepository;
     private final XssSanitizer xssSanitizer;
     private final UrlSecurityService urlSecurityService;
 
@@ -230,6 +233,7 @@ public class MessageService {
 
     /**
      * Retrieves paginated, non-expired messages for a conversation.
+     * Filters out messages that the requesting user has individually deleted ("Delete for Me").
      *
      * @param conversationId the conversation to query
      * @param page           zero-based page index
@@ -238,6 +242,21 @@ public class MessageService {
      */
     @Transactional(readOnly = true)
     public Page<MessageResponse> getConversationHistory(UUID conversationId, int page, int size) {
+        return getConversationHistory(conversationId, page, size, null);
+    }
+
+    /**
+     * Retrieves paginated, non-expired messages for a conversation.
+     * Filters out messages that the requesting user has individually deleted ("Delete for Me").
+     *
+     * @param conversationId the conversation to query
+     * @param page           zero-based page index
+     * @param size           page size (max messages per page)
+     * @param username       the requesting user's username (null = no per-user filtering)
+     * @return a page of MessageResponse DTOs
+     */
+    @Transactional(readOnly = true)
+    public Page<MessageResponse> getConversationHistory(UUID conversationId, int page, int size, String username) {
         if (!conversationRepository.existsById(conversationId)) {
             throw new ResourceNotFoundException("Conversation not found: " + conversationId);
         }
@@ -248,6 +267,23 @@ public class MessageService {
                 Instant.now(),
                 pageable
         );
+
+        // Filter out messages the user has individually deleted ("Delete for Me")
+        if (username != null) {
+            User user = userRepository.findByUsername(username).orElse(null);
+            if (user != null) {
+                Set<UUID> deletedIds = userDeletedMessageRepository
+                        .findDeletedMessageIdsByUserAndConversation(user.getId(), conversationId);
+                if (!deletedIds.isEmpty()) {
+                    List<MessageResponse> filtered = messages.getContent().stream()
+                            .filter(msg -> !deletedIds.contains(msg.getId()))
+                            .map(this::toMessageResponse)
+                            .collect(Collectors.toList());
+                    return new org.springframework.data.domain.PageImpl<>(
+                            filtered, pageable, messages.getTotalElements());
+                }
+            }
+        }
 
         return messages.map(this::toMessageResponse);
     }
@@ -527,6 +563,36 @@ public class MessageService {
         ChatMessage saved = messageRepository.save(message);
         log.info("Message {} deleted by {}", messageId, username);
         return toMessageResponse(saved);
+    }
+
+    /**
+     * Deletes a message for a single user only ("Delete for Me").
+     * Inserts a row into the user_deleted_messages table so the message
+     * is hidden from this user's view but remains visible to everyone else.
+     *
+     * @param messageId the message to hide
+     * @param username  the authenticated user's username
+     */
+    @Transactional
+    public void deleteMessageForMe(UUID messageId, String username) {
+        if (!messageRepository.existsById(messageId)) {
+            throw new ResourceNotFoundException("Message not found: " + messageId);
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        // Idempotent — don't insert if already deleted for this user
+        if (userDeletedMessageRepository.existsByUserIdAndMessageId(user.getId(), messageId)) {
+            return;
+        }
+
+        UserDeletedMessage deletion = UserDeletedMessage.builder()
+                .userId(user.getId())
+                .messageId(messageId)
+                .build();
+        userDeletedMessageRepository.save(deletion);
+        log.info("Message {} deleted for user {}", messageId, username);
     }
 
     // ════════════════════════════════════════════════════════════

@@ -34,6 +34,7 @@ export class MessageBubbleComponent {
   @Output() unpinMessage = new EventEmitter<string>();
   @Output() editMessage = new EventEmitter<{ messageId: string; content: string }>();
   @Output() deleteMessage = new EventEmitter<string>();
+  @Output() deleteForMe = new EventEmitter<string>();
   @Output() reactToMessage = new EventEmitter<{ messageId: string; emoji: string }>();
 
   /** Predefined quick-reaction emojis. */
@@ -50,6 +51,9 @@ export class MessageBubbleComponent {
 
   /** Whether the hover action menu is visible. */
   showActions = false;
+
+  /** Whether the delete dropdown menu is visible. */
+  showDeleteMenu = false;
 
   get formattedTime(): string {
     let dateStr = this.message.createdAt;
@@ -190,6 +194,27 @@ export class MessageBubbleComponent {
   onDelete(): void {
     this.deleteMessage.emit(this.message.id);
     this.showActions = false;
+    this.showDeleteMenu = false;
+  }
+
+  /** Toggles the delete options dropdown. */
+  toggleDeleteMenu(event: Event): void {
+    event.stopPropagation();
+    this.showDeleteMenu = !this.showDeleteMenu;
+  }
+
+  /** Hides message only for the current user (persistent). */
+  onDeleteForMe(event: Event): void {
+    event.stopPropagation();
+    this.deleteForMe.emit(this.message.id);
+    this.showDeleteMenu = false;
+  }
+
+  /** Deletes message for everyone (soft delete). */
+  onDeleteForEveryone(event: Event): void {
+    event.stopPropagation();
+    this.deleteMessage.emit(this.message.id);
+    this.showDeleteMenu = false;
   }
 
   // ════════════════════════════════════════════════════════════

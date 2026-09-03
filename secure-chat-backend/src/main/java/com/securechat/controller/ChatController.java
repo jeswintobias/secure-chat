@@ -184,9 +184,11 @@ public class ChatController {
     public ResponseEntity<Page<MessageResponse>> getConversationHistory(
             @PathVariable UUID conversationId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size
+            @RequestParam(defaultValue = "50") int size,
+            Principal principal
     ) {
-        Page<MessageResponse> messages = messageService.getConversationHistory(conversationId, page, size);
+        String username = principal != null ? principal.getName() : null;
+        Page<MessageResponse> messages = messageService.getConversationHistory(conversationId, page, size, username);
         return ResponseEntity.ok(messages);
     }
 
@@ -340,15 +342,20 @@ public class ChatController {
             Principal principal
     ) {
         String username = principal.getName();
-        log.debug("Delete request from {} for message {} in conversation {}",
-                username, payload.getMessageId(), conversationId);
+        log.debug("Delete request from {} for message {} in conversation {} (mode: {})",
+                username, payload.getMessageId(), conversationId, payload.getMode());
 
-        // Soft delete for everyone
-        MessageResponse response = messageService.deleteMessage(
-                payload.getMessageId(), username);
-        messagingTemplate.convertAndSend(
-                "/topic/conversation/" + conversationId + "/delete",
-                response);
+        if ("ME".equalsIgnoreCase(payload.getMode())) {
+            // "Delete for Me" — hide only for the requesting user, no broadcast
+            messageService.deleteMessageForMe(payload.getMessageId(), username);
+        } else {
+            // "Delete for Everyone" — soft delete and broadcast to all
+            MessageResponse response = messageService.deleteMessage(
+                    payload.getMessageId(), username);
+            messagingTemplate.convertAndSend(
+                    "/topic/conversation/" + conversationId + "/delete",
+                    response);
+        }
     }
 
     /**
@@ -362,8 +369,13 @@ public class ChatController {
     @DeleteMapping("/messages/{messageId}")
     public ResponseEntity<MessageResponse> deleteMessageRest(
             @PathVariable UUID messageId,
+            @RequestParam(defaultValue = "EVERYONE") String mode,
             Principal principal
     ) {
+        if ("ME".equalsIgnoreCase(mode)) {
+            messageService.deleteMessageForMe(messageId, principal.getName());
+            return ResponseEntity.noContent().build();
+        }
         MessageResponse response = messageService.deleteMessage(
                 messageId, principal.getName());
         return ResponseEntity.ok(response);

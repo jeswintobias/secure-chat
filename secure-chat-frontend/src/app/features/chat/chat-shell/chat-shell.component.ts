@@ -594,6 +594,25 @@ export class ChatShellComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Called when the user chooses "Delete for me" from the bubble component.
+   * Sends the delete command with mode 'ME' via WebSocket and immediately
+   * removes the message from the local view.
+   */
+  onDeleteForMe(messageId: string): void {
+    if (!this.activeConversation) return;
+
+    // Send to backend for persistent per-user deletion
+    this.wsService.sendDelete(this.activeConversation.id, {
+      messageId,
+      mode: 'ME',
+    });
+
+    // Immediately remove from local view for instant feedback
+    this.messages = this.messages.filter(m => m.id !== messageId);
+    this.cdr.markForCheck();
+  }
+
+  /**
    * Called when the user reacts to a message from the bubble component.
    * Sends the reaction toggle via WebSocket.
    */
@@ -934,11 +953,15 @@ export class ChatShellComponent implements OnInit, OnDestroy {
    * Decrypts a single encrypted message.
    * If decryption fails or the message is not encrypted, returns it as-is.
    * Applies mandatory DOMPurify sanitization after decryption.
+   *
+   * On first failure, invalidates the cached key and retries once with
+   * a freshly derived key (auto-recovers from stale/incorrect cached keys).
    */
   private async decryptSingleMessage(
     message: MessageResponse,
     conversationId: string,
-    conversationType: string
+    conversationType: string,
+    isRetry = false
   ): Promise<MessageResponse> {
     if (!message.encrypted || !message.iv) {
       return message;
@@ -963,7 +986,14 @@ export class ChatShellComponent implements OnInit, OnDestroy {
 
       return { ...message, content: sanitized };
     } catch (err) {
-      console.warn('[E2EE] Failed to decrypt message', message.id, err);
+      // On first failure, invalidate the cached key and retry once.
+      // This auto-recovers from stale keys cached before the fix.
+      if (!isRetry) {
+        console.warn('[E2EE] Decryption failed, invalidating key and retrying...', message.id);
+        await this.keyManagementService.invalidateConversationKey(conversationId);
+        return this.decryptSingleMessage(message, conversationId, conversationType, true);
+      }
+      console.warn('[E2EE] Failed to decrypt message (after retry)', message.id, err);
       return { ...message, content: '🔒 [Decryption failed]' };
     }
   }

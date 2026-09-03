@@ -82,9 +82,7 @@
 
         <!-- Meta: encryption badge + edited label + ephemeral icon + time + read ticks -->
         <span class="bubble-meta">
-          @if (message.encrypted) {
-            <span class="e2ee-icon" title="End-to-end encrypted">🔒</span>
-          }
+
           @if (message.edited) {
             <span class="edited-label" title="Edited">edited</span>
           }
@@ -128,10 +126,29 @@
             <button class="action-btn" (click)="enterEditMode()" title="Edit message">✏️</button>
           }
 
-          <!-- Delete (own messages only) -->
-          @if (isOwn) {
-            <button class="action-btn action-delete" (click)="onDelete()" title="Delete message">🗑️</button>
-          }
+          <!-- Delete (dropdown for delete options) -->
+          <div class="delete-wrapper">
+            <button class="action-btn action-delete" (click)="toggleDeleteMenu($event)" title="Delete message">🗑️</button>
+
+            @if (showDeleteMenu) {
+              <div class="delete-menu">
+                <button class="delete-menu-item" (click)="onDeleteForMe($event)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                  Delete for me
+                </button>
+                @if (isOwn) {
+                  <button class="delete-menu-item delete-menu-everyone" (click)="onDeleteForEveryone($event)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/>
+                    </svg>
+                    Delete for everyone
+                  </button>
+                }
+              </div>
+            }
+          </div>
 
           <!-- Pin/Unpin (admin only) -->
           @if (isAdmin) {

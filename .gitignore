@@ -18,3 +18,11 @@ Thumbs.db
 
 # Uploads
 secure-chat-backend/uploads/
+
+# Environment Variables & Secrets (NEVER COMMIT)
+.env
+.env.*
+*.env
+application-local.yml
+application-dev-local.yml
+

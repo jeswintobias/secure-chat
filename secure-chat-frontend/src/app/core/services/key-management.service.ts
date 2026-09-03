@@ -142,41 +142,60 @@ export class KeyManagementService {
       return null;
     }
 
-    // Get the other member's public key from the server
-    // For private chats, fetch all member keys and pick the one that isn't me
+    // Get all members' public keys from the server
+    // Returns: { userId: base64PublicKey, ... }
     const memberKeys = await firstValueFrom(
       this.keyApiService.getConversationMemberKeys(conversationId)
     );
 
-    // Find the other user's key (not my own)
-    const myUserId = Object.keys(memberKeys).find(uid =>
-      otherMemberIds ? !otherMemberIds.includes(uid) : false
-    );
+    const allEntries = Object.entries(memberKeys);
 
+    // For a 2-person private chat, there are exactly 2 keys.
+    // We need to find the OTHER user's public key (not ours).
+    // Strategy: export our local public key in raw format and compare
+    // against both server-side keys using raw byte comparison (not JWK strings,
+    // which can have non-deterministic field ordering).
     let otherPublicKeyString: string | undefined;
-    for (const [userId, publicKey] of Object.entries(memberKeys)) {
-      if (userId !== myUserId && (!otherMemberIds || otherMemberIds.includes(userId))) {
-        otherPublicKeyString = publicKey;
-        break;
+
+    if (allEntries.length === 2) {
+      const myPublicKey = await this.cryptoService.getPublicKey(username);
+      if (myPublicKey) {
+        // Export our public key as raw bytes for deterministic comparison
+        const myRawBytes = new Uint8Array(
+          await window.crypto.subtle.exportKey('raw', myPublicKey)
+        );
+
+        for (const [userId, serverKeyStr] of allEntries) {
+          const importedKey = await this.cryptoService.importPublicKeyFromString(serverKeyStr);
+          const rawBytes = new Uint8Array(
+            await window.crypto.subtle.exportKey('raw', importedKey)
+          );
+
+          // Compare raw public key bytes — this is deterministic
+          const isMine = myRawBytes.length === rawBytes.length &&
+            myRawBytes.every((b, i) => b === rawBytes[i]);
+
+          if (!isMine) {
+            otherPublicKeyString = serverKeyStr;
+            break;
+          }
+        }
       }
     }
 
-    // If we can't determine who's who, just use any key that isn't ours
-    // For 2-person private chats, there's only one other person
-    if (!otherPublicKeyString) {
-      const allKeys = Object.entries(memberKeys);
-      if (allKeys.length === 2) {
-        // Try both and use the one that's different from our public key
-        const myPublicKey = await this.cryptoService.getPublicKey(username);
-        if (myPublicKey) {
-          const myPublicKeyStr = await this.cryptoService.exportPublicKeyAsString(myPublicKey);
-          otherPublicKeyString = allKeys.find(([_, key]) => key !== myPublicKeyStr)?.[1];
+    // Fallback: if otherMemberIds are provided, use them
+    if (!otherPublicKeyString && otherMemberIds) {
+      for (const [userId, publicKey] of allEntries) {
+        if (otherMemberIds.includes(userId)) {
+          otherPublicKeyString = publicKey;
+          break;
         }
       }
-      if (!otherPublicKeyString) {
-        // Fallback: use the first key that is available
-        otherPublicKeyString = Object.values(memberKeys)[0];
-      }
+    }
+
+    // Last fallback: use the first key (only viable for 1-entry maps)
+    if (!otherPublicKeyString && allEntries.length === 1) {
+      otherPublicKeyString = allEntries[0][1];
     }
 
     if (!otherPublicKeyString) {
@@ -334,6 +353,34 @@ export class KeyManagementService {
     } catch (err) {
       console.warn('[E2EE] Failed to distribute group key to new member:', err);
     }
+  }
+
+  /**
+   * Invalidates the cached key for a specific conversation.
+   * Used to force re-derivation after a decryption failure.
+   */
+  async invalidateConversationKey(conversationId: string): Promise<void> {
+    this.conversationKeyCache.delete(conversationId);
+    // Also remove from IndexedDB
+    try {
+      const db = await this.openDb();
+      const tx = db.transaction('keys', 'readwrite');
+      const store = tx.objectStore('keys');
+      store.delete(`conv_${conversationId}`);
+    } catch {
+      // Silently ignore — IndexedDB access via CryptoService internals
+    }
+  }
+
+  /**
+   * Opens IndexedDB for direct key removal (mirrors CryptoService internals).
+   */
+  private openDb(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('securechat_e2ee', 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**

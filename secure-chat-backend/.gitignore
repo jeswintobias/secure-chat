@@ -35,5 +35,10 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Environment Variables
+# Environment Variables & Secrets (NEVER COMMIT)
 .env
+.env.*
+*.env
+application-local.yml
+application-dev-local.yml
+
