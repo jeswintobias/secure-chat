@@ -24,6 +24,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
+    Optional<User> findByProviderId(String providerId);
+
     /**
      * Searches for users whose username starts with the given prefix (case-insensitive).
      *

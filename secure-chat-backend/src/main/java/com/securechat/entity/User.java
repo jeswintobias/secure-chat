@@ -18,7 +18,8 @@ import java.util.UUID;
  * JPA entity representing a registered user in the Secure Chat System.
  *
  * Maps to the {@code users} table. Passwords are stored as BCrypt hashes;
- * plain-text credentials are never persisted.
+ * plain-text credentials are never persisted. OAuth users may have a null
+ * password hash.
  */
 @Entity
 @Table(name = "users")
@@ -40,8 +41,20 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
+
+    @Column(name = "profile_picture_url", length = 512)
+    private String profilePictureUrl;
 
     @Enumerated(EnumType.STRING)
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
@@ -85,6 +98,13 @@ public class User {
     @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
     @Builder.Default
     private Set<Conversation> conversations = new HashSet<>();
+
+    /**
+     * Authentication provider used to create the account.
+     */
+    public enum AuthProvider {
+        LOCAL, GOOGLE
+    }
 
     /**
      * User roles within the system.

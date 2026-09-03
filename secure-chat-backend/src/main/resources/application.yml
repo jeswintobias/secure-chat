@@ -77,6 +77,11 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
+  # -------------------- Google OAuth --------------------
+  google:
+    client-id: 938545969864-2s84mo2hnjopdsm1dt5kighlhnr9pp1b.apps.googleusercontent.com
+
+
 cloud:
   aws:
     credentials:
@@ -107,3 +112,6 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+
+
+

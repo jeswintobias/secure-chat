@@ -14,12 +14,14 @@ import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 /**
  * Custom H2 dialect that maps PostgreSQL NAMED_ENUM types to VARCHAR.
  *
- * <p>The production entities use {@code @JdbcTypeCode(SqlTypes.NAMED_ENUM)}
+ * <p>
+ * The production entities use {@code @JdbcTypeCode(SqlTypes.NAMED_ENUM)}
  * for enum columns, which works with PostgreSQL's native enum support.
  * H2 does not support this type code, so this dialect maps it to VARCHAR
  * to allow integration tests to run with H2 in-memory database.
  *
- * <p>Only loaded in the "test" profile via application-test.yml.
+ * <p>
+ * Only loaded in the "test" profile via application-test.yml.
  */
 public class H2NamedEnumDialect extends H2Dialect {
 
@@ -46,7 +48,6 @@ public class H2NamedEnumDialect extends H2Dialect {
         DdlTypeRegistry ddlTypeRegistry = typeContributions.getTypeConfiguration()
                 .getDdlTypeRegistry();
         ddlTypeRegistry.addDescriptor(
-                new DdlTypeImpl(SqlTypes.NAMED_ENUM, "varchar(255)", this)
-        );
+                new DdlTypeImpl(SqlTypes.NAMED_ENUM, "varchar(255)", this));
     }
 }

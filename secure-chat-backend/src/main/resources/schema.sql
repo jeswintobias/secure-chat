@@ -51,12 +51,21 @@ DO ' BEGIN
     END IF;
 END ';
 
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''auth_provider'') THEN
+        CREATE TYPE auth_provider AS ENUM (''LOCAL'', ''GOOGLE'');
+    END IF;
+END ';
+
 -- -------------------- Users Table --------------------
 CREATE TABLE IF NOT EXISTS users (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username        VARCHAR(50)  NOT NULL,
     email           VARCHAR(255) NOT NULL,
-    password_hash   VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255),
+    auth_provider   auth_provider NOT NULL DEFAULT 'LOCAL',
+    provider_id     VARCHAR(255),
+    profile_picture_url VARCHAR(512),
     role            user_role    NOT NULL DEFAULT 'USER',
     online_status   BOOLEAN      NOT NULL DEFAULT FALSE,
     last_seen       TIMESTAMP WITH TIME ZONE,
@@ -69,6 +78,22 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT uq_users_username UNIQUE (username),
     CONSTRAINT uq_users_email    UNIQUE (email)
 );
+
+-- Migration: add OAuth columns to existing users table
+DO ' BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''auth_provider'') THEN
+        ALTER TABLE users ADD COLUMN auth_provider auth_provider NOT NULL DEFAULT ''LOCAL'';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''provider_id'') THEN
+        ALTER TABLE users ADD COLUMN provider_id VARCHAR(255);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = ''users'' AND column_name = ''profile_picture_url'') THEN
+        ALTER TABLE users ADD COLUMN profile_picture_url VARCHAR(512);
+    END IF;
+END ';
+
+-- Make password_hash nullable for OAuth users
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 
 -- -------------------- Conversations Table --------------------
 -- Unified table for both private and group conversations.
@@ -360,3 +385,11 @@ CREATE INDEX IF NOT EXISTS idx_message_reactions_message
 -- Fast reaction lookup per user (for "my reactions" queries)
 CREATE INDEX IF NOT EXISTS idx_message_reactions_user
     ON message_reactions (user_id);
+
+-- ============================================================
+-- OAuth Provider Indexes
+-- ============================================================
+
+-- Fast Google provider lookup by provider_id
+CREATE INDEX IF NOT EXISTS idx_users_provider
+    ON users (auth_provider, provider_id) WHERE provider_id IS NOT NULL;

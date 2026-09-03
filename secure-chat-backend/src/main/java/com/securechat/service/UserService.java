@@ -46,9 +46,16 @@ public class UserService implements UserDetailsService {
 
         // Map our Role enum to Spring Security GrantedAuthority
         // Convention: ROLE_ prefix for role-based access control
+        // For OAuth users with no password, use a non-matchable hash
+        // so password-based login always fails for these accounts.
+        String passwordHash = user.getPasswordHash();
+        if (passwordHash == null || passwordHash.isBlank()) {
+            passwordHash = "{noop}__OAUTH_USER_NO_PASSWORD__";
+        }
+
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
-                user.getPasswordHash(),
+                passwordHash,
                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
         );
     }
