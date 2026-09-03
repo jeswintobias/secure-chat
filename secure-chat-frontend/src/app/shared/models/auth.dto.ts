@@ -30,3 +30,8 @@ export interface AuthResponse {
   readonly role: 'USER' | 'ADMIN';
   readonly expiresIn: number;        // milliseconds (default: 86400000 = 24h)
 }
+
+/** Maps to: com.securechat.dto.request.GoogleLoginRequest */
+export interface GoogleLoginRequest {
+  readonly idToken: string;
+}

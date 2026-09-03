@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, BehaviorSubject } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthResponse, LoginRequest, RegisterRequest } from '../../shared/models';
+import { AuthResponse, GoogleLoginRequest, LoginRequest, RegisterRequest } from '../../shared/models';
 import { KeyManagementService } from './key-management.service';
 
 const TOKEN_KEY = 'securechat_jwt';
@@ -54,6 +54,18 @@ export class AuthService {
    */
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.authUrl}/register`, request).pipe(
+      tap(response => this.handleAuthSuccess(response))
+    );
+  }
+
+  /**
+   * POST /api/auth/google
+   * Sends the Google ID token to the backend for verification.
+   * On success, stores the returned JWT (same as login/register).
+   */
+  googleLogin(idToken: string): Observable<AuthResponse> {
+    const request: GoogleLoginRequest = { idToken };
+    return this.http.post<AuthResponse>(`${this.authUrl}/google`, request).pipe(
       tap(response => this.handleAuthSuccess(response))
     );
   }
