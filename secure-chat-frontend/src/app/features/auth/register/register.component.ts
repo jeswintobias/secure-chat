@@ -1,9 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { RegisterRequest } from '../../../shared/models';
+import { environment } from '../../../../environments/environment';
+
+declare const google: any;
 
 @Component({
   selector: 'app-register',
@@ -12,7 +15,7 @@ import { RegisterRequest } from '../../../shared/models';
   templateUrl: './register.component.html',
   styleUrl: './register.component.css',
 })
-export class RegisterComponent {
+export class RegisterComponent implements AfterViewInit {
   email = '';
   username = '';
   useSameAsEmail = false;
@@ -21,11 +24,17 @@ export class RegisterComponent {
   isLoading = false;
   errorMessage = '';
   fieldErrors: Record<string, string> = {};
+  googleLoading = false;
 
   constructor(
     private readonly authService: AuthService,
     private readonly router: Router,
+    private readonly ngZone: NgZone,
   ) {}
+
+  ngAfterViewInit(): void {
+    this.initGoogleSignIn();
+  }
 
   // ── "Same as email" toggle ──
 
@@ -112,6 +121,49 @@ export class RegisterComponent {
         }
         this.errorMessage = err?.error?.message || 'Registration failed. Please try again.';
       },
+    });
+  }
+
+  private initGoogleSignIn(): void {
+    const checkGoogle = setInterval(() => {
+      if (typeof google !== 'undefined' && google.accounts) {
+        clearInterval(checkGoogle);
+        google.accounts.id.initialize({
+          client_id: environment.googleClientId,
+          callback: (response: any) => this.handleGoogleResponse(response),
+          auto_select: false,
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('google-signin-btn-register'),
+          {
+            theme: 'filled_black',
+            size: 'large',
+            width: 320,
+            text: 'continue_with',
+            shape: 'pill',
+            logo_alignment: 'left',
+          }
+        );
+      }
+    }, 100);
+
+    setTimeout(() => clearInterval(checkGoogle), 10000);
+  }
+
+  private handleGoogleResponse(response: any): void {
+    this.ngZone.run(() => {
+      this.googleLoading = true;
+      this.errorMessage = '';
+
+      this.authService.googleLogin(response.credential).subscribe({
+        next: () => {
+          this.router.navigate(['/chat']);
+        },
+        error: (err) => {
+          this.googleLoading = false;
+          this.errorMessage = err?.error?.message || 'Google sign-up failed. Please try again.';
+        },
+      });
     });
   }
 }
