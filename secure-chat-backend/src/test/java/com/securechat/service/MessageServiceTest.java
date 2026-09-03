@@ -11,6 +11,7 @@ import com.securechat.repository.ChatMessageRepository;
 import com.securechat.repository.ConversationRepository;
 import com.securechat.repository.MessageReadRepository;
 import com.securechat.repository.UserRepository;
+import com.securechat.repository.MessageReactionRepository;
 import com.securechat.service.urlsecurity.UrlScanResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,7 @@ class MessageServiceTest {
     @Mock private ConversationRepository conversationRepository;
     @Mock private UserRepository userRepository;
     @Mock private MessageReadRepository messageReadRepository;
+    @Mock private MessageReactionRepository reactionRepository;
     @Mock private XssSanitizer xssSanitizer;
     @Mock private UrlSecurityService urlSecurityService;
 
@@ -102,6 +104,7 @@ class MessageServiceTest {
                 .build();
         when(messageRepository.save(any(ChatMessage.class))).thenReturn(savedMessage);
         when(messageReadRepository.findByMessageId(any())).thenReturn(List.of());
+        when(reactionRepository.findByMessageIdOrderByCreatedAtAsc(any())).thenReturn(List.of());
 
         // Act
         MessageResponse response = messageService.sendMessage(conversationId, "alice", "Hello world", null);
@@ -125,6 +128,7 @@ class MessageServiceTest {
         when(urlSecurityService.scanMessageContent("Ephemeral message"))
                 .thenReturn(safeScanResult("Ephemeral message"));
         when(messageReadRepository.findByMessageId(any())).thenReturn(List.of());
+        when(reactionRepository.findByMessageIdOrderByCreatedAtAsc(any())).thenReturn(List.of());
 
         // Capture the saved message to verify expiresAt
         ArgumentCaptor<ChatMessage> captor = ArgumentCaptor.forClass(ChatMessage.class);
@@ -189,6 +193,7 @@ class MessageServiceTest {
         when(urlSecurityService.validateSingleUrl("/api/upload/files/photo.png"))
                 .thenReturn(safeScanResult("/api/upload/files/photo.png"));
         when(messageReadRepository.findByMessageId(any())).thenReturn(List.of());
+        when(reactionRepository.findByMessageIdOrderByCreatedAtAsc(any())).thenReturn(List.of());
 
         ArgumentCaptor<ChatMessage> captor = ArgumentCaptor.forClass(ChatMessage.class);
         when(messageRepository.save(captor.capture())).thenAnswer(invocation -> {
@@ -230,6 +235,7 @@ class MessageServiceTest {
         when(messageRepository.findById(messageId)).thenReturn(Optional.of(existingMessage));
         when(messageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageReadRepository.findByMessageId(any())).thenReturn(List.of());
+        when(reactionRepository.findByMessageIdOrderByCreatedAtAsc(any())).thenReturn(List.of());
 
         // Act
         MessageResponse response = messageService.pinMessage(messageId, "admin");

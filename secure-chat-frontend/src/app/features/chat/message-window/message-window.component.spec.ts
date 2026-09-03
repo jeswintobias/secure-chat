@@ -31,6 +31,8 @@ describe('MessageWindowComponent', () => {
       encrypted: false,
       iv: null,
       readReceipts: [],
+      edited: false,
+      reactions: [],
       ...overrides,
     };
   }
