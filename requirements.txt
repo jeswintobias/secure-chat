@@ -1,0 +1,37 @@
+# Secure Chat System - Environment Requirements
+
+This document lists the required software, tools, and versions needed to build and run the Secure Chat System (Frontend and Backend).
+
+## General Requirements
+- **Git** (latest) - For version control and repository management.
+- A Modern Web Browser (Chrome, Firefox, Safari, Edge).
+
+## Backend Requirements (Spring Boot)
+The backend is built with Spring Boot 3.3 and Java 23.
+
+- **Java Development Kit (JDK)**: Version 21 or 23 (Tested extensively on Java 23).
+- **Maven**: Version 3.8+ (Used for dependency management and building).
+- **PostgreSQL**: Version 14+ (Relational database for storing users, messages, and relationships).
+- **IDE**: IntelliJ IDEA (recommended), Eclipse, or VS Code with Java Extension Pack.
+
+## Frontend Requirements (Angular)
+The frontend is a Single Page Application (SPA) built with Angular 19.
+
+- **Node.js**: Version 22.x LTS or 23.x (Required for Angular CLI and npm).
+- **npm**: Version 10.x or higher (Comes bundled with Node.js).
+- **Angular CLI**: Version 19.x (`npm install -g @angular/cli@19`).
+- **IDE**: VS Code (recommended) or WebStorm.
+
+## Environment Variables
+The application relies on several environment variables. You can set them in a `.env` file in the root or backend directory.
+
+### Required Backend Variables:
+- `DB_URL`: JDBC URL for PostgreSQL (e.g., `jdbc:postgresql://localhost:5432/securechat`)
+- `DB_USERNAME`: Database username.
+- `DB_PASSWORD`: Database password.
+- `JWT_SECRET`: Base64 encoded secret key for signing JWT tokens.
+- `JWT_EXPIRATION`: Expiration time for JWTs in milliseconds (default: 86400000 for 24h).
+
+### Optional Security Integrations:
+- `SAFE_BROWSING_API_KEY`: Google Safe Browsing API key (for URL scanning/security).
+- `GOOGLE_CLIENT_ID`: Google OAuth 2.0 Client ID for Sign-In with Google.

@@ -6,21 +6,31 @@ Welcome to the **Secure Chat System** repository! This is a full-stack, real-tim
 
 ## ✨ Unique Selling Propositions (USPs) & Features
 
-Here's what we have built so far:
+Here is what sets the Secure Chat System apart as a premium, enterprise-grade solution:
 
-- **Real-Time Communication**: Lightning-fast message delivery using **WebSocket** and the **STOMP** protocol.
-- **Robust Security**: 
-  - JWT-based Authentication & Role-based Authorization (`USER` & `ADMIN`).
-  - XSS-sanitized persistence (JSoup strict whitelist) to protect against cross-site scripting.
-  - 4-layer URL security pipeline (syntax validation, DNS/SSRF protection, HTTP content-type probing, Google Safe Browsing integration) to block malicious links in messages.
-- **Self-Destructing (Ephemeral) Messages**: Send messages that automatically expire after a set time.
-- **Rich Media Sharing**: Support for file and image attachments (up to 10MB).
-- **Group Chats**: Create private or group conversations with secure, referral-code-based joining.
-- **Read Receipts**: Real-time tracking of which users have read specific messages.
-- **Admin Controls**: Administrative features including the ability to PIN important messages in a conversation.
+- **Authentication & Onboarding**:
+  - Seamless **Google Identity Services (OAuth 2.0)** integration for 1-click Sign In & Sign Up.
+  - Custom-styled, native-feeling premium Google overlay buttons.
+  - JWT-based Auth & Role-based Access Control (`USER` & `ADMIN`).
+- **Premium SaaS UI/UX**:
+  - Exquisite dark-mode aesthetic utilizing `DM Sans` geometric typography.
+  - Minimalist, highly functional sidebar navigation.
+  - Smooth micro-animations and perfectly rounded glassmorphism elements.
+- **Enterprise-Grade Security**:
+  - Advanced 4-layer URL security pipeline (Syntax, DNS/SSRF, HTTP Probing, Safe Browsing).
+  - Strict XSS-sanitized persistence (JSoup whitelist).
+  - Built-in Local Key Management infrastructure preparing for End-to-End Encryption (E2EE).
+- **Real-Time Communication Engine**: 
+  - Lightning-fast, bidirectional message delivery using **WebSocket** and **STOMP**.
+  - **RxStomp** integration on Angular for robust connection resilience.
+- **Advanced Chat Capabilities**:
+  - **Self-Destructing (Ephemeral)** messages.
+  - Live **Read Receipts** and typing indicators.
+  - Admin-only **Message Pinning**.
+  - **Rich Media** sharing (up to 10MB file and image attachments).
 - **Modern Tech Stack**: 
-  - **Backend**: Spring Boot 3.3 + Java 21, Spring Security, Spring Data JPA (PostgreSQL).
-  - **Frontend**: Angular 19 with RxStomp for reactive WebSocket state management.
+  - **Backend**: Spring Boot 3.3 + Java 23, Spring Security, Spring Data JPA (PostgreSQL).
+  - **Frontend**: Angular 19 with Reactive patterns.
 
 ## 🏗️ Architecture Overview
 
